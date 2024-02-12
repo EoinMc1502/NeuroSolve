@@ -98,7 +98,8 @@ app.post('/submit-form', async (req, res) => {
             FROM STRING_SPLIT(Symptoms, ',') AS splitSymptoms
             WHERE splitSymptoms.value IN (${symptomsString})
         ) AS MatchingSymptoms
-        FROM Neurological_Disorders`;
+        FROM Neurological_Disorders
+        ORDER BY MatchingSymptoms DESC`;
         const disordersResult = await request.query(disordersQuery);
 
         // Aggregate results and send response
