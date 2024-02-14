@@ -88,6 +88,69 @@
         }
     </style>
 </head>
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script>
+    function submitForm() {
+        console.log('Submitting form...');
+        const formData = {
+            patientTitle: $('#patientTitle').val(),
+            patientFirstName: $('#patientFirstName').val(),
+            patientLastName: $('#patientLastName').val(),
+            streetAddress: $('#streetAddress').val(),
+            city: $('#city').val(),
+            state: $('#state').val(),
+            postalCode: $('#postalCode').val(),
+            country: $('#country').val(),
+            dateOfBirth: $('#dateOfBirth').val(),
+            familyHistory: $('#familyHistory').val(),
+            symptoms: $('#symptoms').val(),
+            testResults: $('#testResults').val()
+        };
+
+        console.log('Form Data:', formData);
+
+        $.ajax({
+            url: 'http://localhost:3000/submit-form',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function (response) {
+                
+                showDiagnosisProcess(JSON.stringify(response));
+            },
+            error: function (error) {
+                console.error('Error submitting form:', error);
+            }
+        });
+        return false;
+    }
+
+    function showDiagnosisProcess(message) {
+        alert(message);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // your existing JavaScript code here
+        fetch('http://localhost:3000/symptoms')
+            .then(response => response.json())
+            .then(data => {
+                const selectElement = document.getElementById('symptoms');
+                data.forEach(symptom => {
+                    const option = document.createElement('option');
+                    option.value = symptom.ID; // Assuming each symptom has an 'id'
+                    option.textContent = symptom.Name; // Assuming each symptom has a 'name'
+                    selectElement.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching symptoms:', error));
+
+        // Attach the submitForm function to the form's onsubmit event
+        $('#submit-form').submit(function (event) {
+            event.preventDefault(); // Prevents default form submission
+            submitForm();
+        });
+    });
+</script>
 <body>
     <header>
         <div class="container">
@@ -109,7 +172,7 @@
     </div>
 
     <div class="container">
-        <form action="http://localhost:3000/submit-form" method="post" enctype="application/x-www-form-urlencoded">
+        <form id="submit-form">
             <label for="patientTitle">Title:</label>
             <select id="patientTitle" name="patientTitle">
                 <option value="Mr">Mr</option>
@@ -144,44 +207,17 @@
             <input type="date" id="dateOfBirth" name="dateOfBirth">
 
             <label for="familyHistory">Family History:</label>
-            <textarea id="familyHistory" name="familyHistory"></textarea>
+            <input type="text" id="familyHistory" name="familyHistory"></input>
 
             <label for="symptoms">Symptoms:</label>
-            <select name="symptoms" id="symptoms" multiple>
-                <!--<option value="javascript">JavaScript</option>
-                <option value="php">PHP</option>
-                <option value="java">Java</option>
-                <option value="golang">Golang</option>
-                <option value="python">Python</option>
-                <option value="c#">C#</option>
-                <option value="C++">C++</option>
-                <option value="erlang">Erlang</option>-->
-            </select>
-            <!--<textarea id="symptoms" name="symptoms"></textarea>-->
+            <select name="symptoms" id="symptoms" multiple></select>
+            <!-- <textarea id="symptoms" name="symptoms"></textarea> -->
 
             <label for="testResults">Test Results/Reports:</label>
-            <textarea id="testResults" name="testResults"></textarea>
+            <input type="text" id="testResults" name="testResults"></input>
 
             <input type="submit" class="button" value="Submit">
         </form>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('http://localhost:3000/symptoms')
-                .then(response => response.json())
-                .then(data => {
-                    const selectElement = document.getElementById('symptoms');
-                    data.forEach(symptom => {
-                        const option = document.createElement('option');
-                        option.value = symptom.ID; // Assuming each symptom has an 'id'
-                        option.textContent = symptom.Name; // Assuming each symptom has a 'name'
-                        selectElement.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Error fetching symptoms:', error));
-        });
-    </script>
-
 </body>
 </html>

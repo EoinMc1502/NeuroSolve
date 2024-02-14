@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.use(bodyParser.json());
+
 // Adding CORS support
 const cors = require('cors');
 app.use(cors());
@@ -31,7 +33,7 @@ sql.connect(config, function (err) {
 });
 
 app.get('/symptoms', (req, res) => {
-    console.log("Fetching symptoms from the database...");
+    //console.log("Fetching symptoms from the database...");
     const request = new sql.Request();
     request.query('SELECT * FROM Symptoms', (err, result) => {
         if (err) {
@@ -39,7 +41,7 @@ app.get('/symptoms', (req, res) => {
             res.status(500).send('Error fetching symptoms');
             return;
         }
-        console.log('Symptoms fetched successfully:', result.recordset);
+        //console.log('Symptoms fetched successfully:', result.recordset);
         res.json(result.recordset);
     });
 });
@@ -92,15 +94,25 @@ app.post('/submit-form', async (req, res) => {
         await request.query(patientInsertQuery);
 
         // Assuming you have a SQL query ready for comparing disorders and symptoms
-        const disordersQuery = `SELECT ID, Name, Symptoms,
-        (
-            SELECT COUNT(*)
-            FROM STRING_SPLIT(Symptoms, ',') AS splitSymptoms
-            WHERE splitSymptoms.value IN (${symptomsString})
-        ) AS MatchingSymptoms
-        FROM Neurological_Disorders
-        ORDER BY MatchingSymptoms DESC`;
-        const disordersResult = await request.query(disordersQuery);
+        const disordersQuery = `
+            SELECT ID, Name, MatchingSymptoms
+            FROM (
+                SELECT ID, Name, Symptoms,
+                    (
+                        SELECT COUNT(*)
+                        FROM STRING_SPLIT(Symptoms, ',') AS splitSymptoms
+                        WHERE splitSymptoms.value IN (
+                            SELECT value
+                            FROM STRING_SPLIT(@symptomsString, ',')
+                        )
+                    ) AS MatchingSymptoms
+                FROM Neurological_Disorders
+            ) AS Subquery
+            WHERE MatchingSymptoms > 0
+            ORDER BY MatchingSymptoms DESC`;
+
+        const disordersResult = await request.input('symptomsString', sql.VarChar, symptomsString)
+            .query(disordersQuery);
 
         // Aggregate results and send response
         res.json({
