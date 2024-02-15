@@ -404,11 +404,15 @@ function getSelectValues(container) {
             <div class="select-container" id="FamilyHistoryContainer">
                 <div class="select-wrapper" id="FamilyMembersWrapper">
                     <label for="FamilyMembers">Family Member:</label>
-                    <select id="FamilyMembers" name="FamilyMembers"></select>
+                    <select id="FamilyMembers" name="FamilyMembers">
+                        <option value="" selected>Please select</option>
+                    </select>
                 </div>
                 <div class="select-wrapper" id="DisordersWrapper">
                     <label for="Disorders">Disorder:</label>
-                    <select id="Disorders" name="Disorders"></select>
+                    <select id="Disorders" name="Disorders">
+                        <option value="" selected>Please select</option>
+                    </select>
                 </div>
             </div>
             <button type="button" id="DuplicateContainerButton">Add More</button>
