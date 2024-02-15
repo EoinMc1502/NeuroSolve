@@ -157,6 +157,7 @@
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script>
     function submitForm() {
+        
         console.log('Submitting form...');
         const formData = {
             patientTitle: $('#patientTitle').val(),
@@ -168,7 +169,7 @@
             postalCode: $('#postalCode').val(),
             country: $('#country').val(),
             dateOfBirth: $('#dateOfBirth').val(),
-            familyHistory: $('#familyHistory').val(),
+            familyHistory: gatherFamilyHistoryData(),
             symptoms: $('#symptoms').val(),
             testResults: $('#testResults').val()
         };
@@ -190,6 +191,38 @@
         });
         return false;
     }
+
+    function gatherFamilyHistoryData() {
+    let familyHistoryData = [];
+
+    // Original container data
+    const originalContainer = document.getElementById('FamilyHistoryContainer');
+    familyHistoryData.push(getSelectValues(originalContainer));
+
+    // Duplicated containers data
+    const duplicatedContainers = document.getElementById('DuplicatedContainerContainer').children;
+    for (const container of duplicatedContainers) {
+        familyHistoryData.push(getSelectValues(container));
+    }
+
+    // Filter out any pairs that contain empty values for familyMember or disorder
+    familyHistoryData = familyHistoryData.filter(pair => pair.familyMember && pair.disorder);
+
+    // Format data as 'familyMemberId,disorderId;familyMemberId,disorderId;...'
+    const formattedFamilyHistory = familyHistoryData.map(pair => `${pair.familyMember},${pair.disorder}`).join(';');
+    console.log(formattedFamilyHistory);
+    return formattedFamilyHistory;
+}
+
+function getSelectValues(container) {
+    const familyMemberSelect = container.querySelector('select[name^="FamilyMembers"]');
+    const disorderSelect = container.querySelector('select[name^="Disorders"]');
+    const familyMemberValue = familyMemberSelect ? familyMemberSelect.value : '';
+    const disorderValue = disorderSelect ? disorderSelect.value : '';
+    return { familyMember: familyMemberValue, disorder: disorderValue };
+}
+
+
 
     // function showDiagnosisProcess(message) {
     //     alert(message);
