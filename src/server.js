@@ -46,6 +46,33 @@ app.get('/symptoms', (req, res) => {
     });
 });
 
+app.get('/FamilyMembers', (req, res) => {
+    console.log("Fetching FamilyMembers from the database...");
+    const request = new sql.Request();
+    request.query('SELECT * FROM FamilyMembers', (err, result) => {
+        if (err) {
+            console.error('Error fetching FamilyMembers from database:', err);
+            res.status(500).send('Error fetching FamilyMembers');
+            return;
+        }
+        console.log('FamilyMembers fetched successfully:', result.recordset);
+        res.json(result.recordset);
+    });
+});
+
+app.get('/Disorders', (req, res) => {
+    console.log("Fetching Disorders from the database...");
+    const request = new sql.Request();
+    request.query('SELECT ID, Name FROM Neurological_Disorders', (err, result) => {
+        if (err) {
+            console.error('Error fetching Disorders from database:', err);
+            res.status(500).send('Error fetching Disorders');
+            return;
+        }
+        console.log('Disorders fetched successfully:', result.recordset);
+        res.json(result.recordset);
+    });
+});
 
 // Endpoint to handle form submission
 app.post('/submit-form', async (req, res) => {
@@ -62,7 +89,10 @@ app.post('/submit-form', async (req, res) => {
         // Handle the case where only one symptom is selected
         symptomsString = symptomsArray;
     }
+
+    const totalPatientSymptoms = symptomsArray.length;
     console.log('Concatenated Symptoms IDs:', symptomsString);
+    console.log('Total Patient Symptoms:', totalPatientSymptoms);
 
     try {
         const request = new sql.Request();
@@ -95,6 +125,7 @@ app.post('/submit-form', async (req, res) => {
 
         // Assuming you have a SQL query ready for comparing disorders and symptoms
         const disordersQuery = `
+            DECLARE @totalPatientSymptoms INT = ${totalPatientSymptoms};
             SELECT ID, Name, MatchingSymptoms
             FROM (
                 SELECT ID, Name, Symptoms,
@@ -105,10 +136,11 @@ app.post('/submit-form', async (req, res) => {
                             SELECT value
                             FROM STRING_SPLIT(@symptomsString, ',')
                         )
-                    ) AS MatchingSymptoms
+                    ) AS MatchingSymptoms,
+                    @totalPatientSymptoms AS TotalPatientSymptoms
                 FROM Neurological_Disorders
             ) AS Subquery
-            WHERE MatchingSymptoms > 0
+            WHERE (CAST(MatchingSymptoms AS FLOAT) / CAST(@totalPatientSymptoms AS FLOAT)) >= 0.25
             ORDER BY MatchingSymptoms DESC`;
 
         const disordersResult = await request.input('symptomsString', sql.VarChar, symptomsString)
