@@ -152,6 +152,13 @@
             background-color: #555; /* Lightens the button on hover for feedback */
             color: #fff; /* Makes the text color brighter on hover */
         }
+        .symptoms-select {
+            height: 250px; /* Adjust the height as needed */
+            overflow-y: auto; /* Enables vertical scrolling if there are many options */
+        }
+        .extra-space {
+            height: 30px; /* Adjust the height as needed */
+        }
     </style>
 </head>
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -419,11 +426,13 @@ function getSelectValues(container) {
             <div id="DuplicatedContainerContainer"></div>
 
             <label for="symptoms">Symptoms:</label>
-            <select name="symptoms" id="symptoms" multiple></select>
+            <select name="symptoms" id="symptoms" multiple class="symptoms-select" multiple></select>
             <!-- <textarea id="symptoms" name="symptoms"></textarea> -->
 
             <label for="testResults">Test Results/Reports:</label>
             <input type="text" id="testResults" name="testResults"></input>
+
+            <div class="extra-space"></div>
 
             <input type="submit" class="button" value="Submit">
         </form>
@@ -435,5 +444,6 @@ function getSelectValues(container) {
             <p>This is your message content. You can customize it as needed.</p>
         </div>
     </div>
+    <div class="extra-space"></div>
 </body>
 </html>
