@@ -163,6 +163,17 @@
 </head>
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script>
+    function calculateAge(dateOfBirth) {
+    const dob = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    return age;
+    }
+
     function submitForm() {
         
         console.log('Submitting form...');
@@ -174,12 +185,14 @@
             city: $('#city').val(),
             state: $('#state').val(),
             postalCode: $('#postalCode').val(),
+            biologicalSex: $('#biologicalSex').val(),
             country: $('#country').val(),
             dateOfBirth: $('#dateOfBirth').val(),
             familyHistory: gatherFamilyHistoryData(),
             symptoms: $('#symptoms').val(),
-            testResults: $('#testResults').val()
         };
+
+        formData.age = calculateAge(formData.dateOfBirth);
 
         console.log('Form Data:', formData);
 
@@ -404,8 +417,12 @@ function getSelectValues(container) {
             <label for="dateOfBirth">Date of Birth:</label>
             <input type="date" id="dateOfBirth" name="dateOfBirth">
 
-            <!-- <label for="familyHistory">Family History:</label>
-            <input type="text" id="familyHistory" name="familyHistory"></input> -->
+            <label for="biologicalSex">Biological Sex:</label>
+            <select id="biologicalSex" name="biologicalSex">
+                <option value="" selected>Please select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
 
             <label>Family History:</label>
             <div class="select-container" id="FamilyHistoryContainer">
@@ -429,8 +446,8 @@ function getSelectValues(container) {
             <select name="symptoms" id="symptoms" multiple class="symptoms-select" multiple></select>
             <!-- <textarea id="symptoms" name="symptoms"></textarea> -->
 
-            <label for="testResults">Test Results/Reports:</label>
-            <input type="text" id="testResults" name="testResults"></input>
+            <!-- <label for="testResults">Test Results/Reports:</label>
+            <input type="text" id="testResults" name="testResults"></input> -->
 
             <div class="extra-space"></div>
 

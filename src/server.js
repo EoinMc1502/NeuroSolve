@@ -96,7 +96,7 @@ app.post('/submit-form', async (req, res) => {
 
     try {
         const request = new sql.Request();
-        const { patientTitle, patientFirstName, patientLastName, streetAddress, city, state, postalCode, country, familyHistory, testResults } = req.body;
+        const { patientTitle, patientFirstName, patientLastName, streetAddress, city, state, postalCode, biologicalSex, country, familyHistory, age } = req.body;
 
         let formattedDateOfBirth;
         if (req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime())) {
@@ -118,9 +118,11 @@ app.post('/submit-form', async (req, res) => {
         request.input('DOB', sql.Date, formattedDateOfBirth);
         request.input('Family_History', sql.VarChar, familyHistory);
         request.input('Symptoms', sql.VarChar, symptomsString);
-        request.input('Test_Results', sql.VarChar, testResults);
+        request.input('BiologicalSex', sql.VarChar, biologicalSex);
+        request.input('Age', sql.Int, age);
 
-        const patientInsertQuery = `INSERT INTO PatientData (Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Test_Results) VALUES (@Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @Test_Results)`;
+
+        const patientInsertQuery = `INSERT INTO PatientData (Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Biological_Sex, Age) VALUES (@Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @BiologicalSex, @Age)`;
         await request.query(patientInsertQuery);
 
         // Assuming you have a SQL query ready for comparing disorders and symptoms
