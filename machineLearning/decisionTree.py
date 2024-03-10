@@ -4,8 +4,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 from imblearn.over_sampling import SMOTE  # Handle imbalanced data
-from sklearn.preprocessing import StandardScaler  # Feature scaling
-# Visualization imports
 import matplotlib.pyplot as plt
 from sklearn.tree import export_graphviz
 import graphviz
@@ -24,17 +22,18 @@ cnxn = pyodbc.connect('DRIVER=' + driver + ';SERVER=' + server + ';PORT=1433;DAT
 disorder_query = "SELECT * FROM Neurological_Disorders"
 disorders = pd.read_sql(disorder_query, cnxn)
 
-# Fetching symptom names
+# Fetching symptom names and age ranges
 symptom_query = "SELECT * FROM Symptoms"
 symptoms = pd.read_sql(symptom_query, cnxn)
 
 age_range_query = "SELECT * FROM AgeRanges"
-age_range = pd.read_sql(age_range_query, cnxn)
+age_ranges = pd.read_sql(age_range_query, cnxn)
 
 cnxn.close()
 
-# Create a dictionary to map symptom IDs to symptom names
+# Create dictionaries to map IDs to names
 symptom_dict = dict(zip(symptoms['ID'], symptoms['Name']))
+age_range_dict = {str(row['ID']): row['Description'] for index, row in age_ranges.iterrows()}
 
 # Initialize columns for each symptom in the disorders DataFrame
 for symptom_id in symptom_dict.keys():
@@ -49,16 +48,40 @@ for index, row in disorders.iterrows():
             if symptom_name:
                 disorders.at[index, symptom_name] = 1
 
-# Dropping columns not needed for the model and assuming age is already a part of the DataFrame
-disorders.drop(['ID', 'Symptoms', 'Specific_Symptoms'], axis=1, inplace=True)
+# Initialize columns for each age range for both genders in the disorders DataFrame
+for age_range_id, age_range_desc in age_range_dict.items():
+    disorders[f'Male_{age_range_desc}'] = 0
+    disorders[f'Female_{age_range_desc}'] = 0
 
-# Assuming 'Age' is a column in your DataFrame, applying feature scaling
-scaler = StandardScaler()
-disorders['Age_Scaled'] = scaler.fit_transform(disorders[['Age']])  # Ensure 'Age' is in your DataFrame
+# Update disorders DataFrame with binary age range data
+for index, row in disorders.iterrows():
+    # Handling Male age ranges
+    male_age_range_ids = str(row['Age_Distribution_Ranges_Male']).split(',')
+    for age_range_id in male_age_range_ids:
+        if age_range_id:
+            age_range_desc = age_range_dict.get(age_range_id)
+            if age_range_desc:
+                disorders.at[index, f'Male_{age_range_desc}'] = 1
+    
+    # Handling Female age ranges
+    female_age_range_ids = str(row['Age_Distribution_Ranges_Female']).split(',')
+    for age_range_id in female_age_range_ids:
+        if age_range_id:
+            age_range_desc = age_range_dict.get(age_range_id)
+            if age_range_desc:
+                disorders.at[index, f'Female_{age_range_desc}'] = 1
+
+# Dropping columns not needed for the model
+disorders.drop(['ID', 'Symptoms', 'Specific_Symptoms', 'Age_Distribution_Ranges_Male', 'Age_Distribution_Ranges_Female', 'Potential_Symptoms'], axis=1, inplace=True)
+
+
+print(disorders.columns)
+
+
 
 # Machine learning model preparation
-X = disorders.drop('DisorderName', axis=1)  # Features, now including 'Age_Scaled'
-y = disorders['DisorderName']  # Target variable
+X = disorders.drop('Name', axis=1)  # Features
+y = disorders['Name']  # Target variable
 
 # Handling imbalanced data with SMOTE
 smote = SMOTE(random_state=42)
