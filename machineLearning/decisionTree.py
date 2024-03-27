@@ -1,121 +1,196 @@
-import pyodbc
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier, plot_tree
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
-from imblearn.over_sampling import SMOTE  # Handle imbalanced data
-import matplotlib.pyplot as plt
+import pyodbc
+from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
+from sklearn.model_selection import GridSearchCV, LeaveOneOut, train_test_split, cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 from sklearn.tree import export_graphviz
-import graphviz
+from imblearn.over_sampling import SMOTE
+from sqlalchemy import create_engine
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from joblib import dump
 
-# Database connection parameters
+# Database connection setup
 server = 'eoinmcnamee.database.windows.net'
 database = 'NeurologicalDiagnosisSystem'
 username = 'emcnamee08'
 password = 'Mcnamee1502'
-driver= '{ODBC Driver 17 for SQL Server}'
+driver = 'ODBC Driver 17 for SQL Server'
 
-# Establishing connection to the database
-cnxn = pyodbc.connect('DRIVER=' + driver + ';SERVER=' + server + ';PORT=1433;DATABASE=' + database + ';UID=' + username + ';PWD=' + password)
+# Create the connection string for SQLAlchemy
+connection_string = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}"
+engine = create_engine(connection_string)
+print("Database connection established.\n")
 
-# Fetching disorder data
-disorder_query = "SELECT * FROM Neurological_Disorders"
-disorders = pd.read_sql(disorder_query, cnxn)
+# Execute SQL queries to fetch data
+neurological_disorders_query = "SELECT ID, Name, Symptoms, Potential_Symptoms, Age_Distribution_Ranges_Male, Age_Distribution_Ranges_Female, Percentage_Of_Diagnoses_Male, Percentage_Of_Diagnoses_Female FROM Neurological_Disorders"
+neurological_disorders_df = pd.read_sql_query(neurological_disorders_query, engine)
+print("Neurological Disorders DataFrame loaded:")
+print(neurological_disorders_df.head(), "\n")
 
-# Fetching symptom names and age ranges
-symptom_query = "SELECT * FROM Symptoms"
-symptoms = pd.read_sql(symptom_query, cnxn)
+symptoms_query = "SELECT ID, Name FROM Symptoms"
+symptoms_df = pd.read_sql_query(symptoms_query, engine)
+print("Symptoms DataFrame loaded:")
+print(symptoms_df.head(), "\n")
 
-age_range_query = "SELECT * FROM AgeRanges"
-age_ranges = pd.read_sql(age_range_query, cnxn)
+# Concatenate Symptoms and Potential_Symptoms
+neurological_disorders_df['Combined_Symptoms'] = neurological_disorders_df['Symptoms'].str.cat(neurological_disorders_df['Potential_Symptoms'].fillna(''), sep=',')
+# Remove any duplicate commas and leading/trailing commas
+neurological_disorders_df['Combined_Symptoms'] = neurological_disorders_df['Combined_Symptoms'].str.replace(',,', ',').str.strip(',')
 
-cnxn.close()
-
-# Create dictionaries to map IDs to names
-symptom_dict = dict(zip(symptoms['ID'], symptoms['Name']))
-age_range_dict = {str(row['ID']): row['Description'] for index, row in age_ranges.iterrows()}
-
-# Initialize columns for each symptom in the disorders DataFrame
-for symptom_id in symptom_dict.keys():
-    disorders[symptom_dict[symptom_id]] = 0
-
-# Update disorders DataFrame with binary symptom data
-for index, row in disorders.iterrows():
-    symptom_ids = str(row['Symptoms']).split(',')
-    for symptom_id in symptom_ids:
-        if symptom_id:
-            symptom_name = symptom_dict.get(int(symptom_id))
-            if symptom_name:
-                disorders.at[index, symptom_name] = 1
-
-# Initialize columns for each age range for both genders in the disorders DataFrame
-for age_range_id, age_range_desc in age_range_dict.items():
-    disorders[f'Male_{age_range_desc}'] = 0
-    disorders[f'Female_{age_range_desc}'] = 0
-
-# Update disorders DataFrame with binary age range data
-for index, row in disorders.iterrows():
-    # Handling Male age ranges
-    male_age_range_ids = str(row['Age_Distribution_Ranges_Male']).split(',')
-    for age_range_id in male_age_range_ids:
-        if age_range_id:
-            age_range_desc = age_range_dict.get(age_range_id)
-            if age_range_desc:
-                disorders.at[index, f'Male_{age_range_desc}'] = 1
-    
-    # Handling Female age ranges
-    female_age_range_ids = str(row['Age_Distribution_Ranges_Female']).split(',')
-    for age_range_id in female_age_range_ids:
-        if age_range_id:
-            age_range_desc = age_range_dict.get(age_range_id)
-            if age_range_desc:
-                disorders.at[index, f'Female_{age_range_desc}'] = 1
-
-# Dropping columns not needed for the model
-disorders.drop(['ID', 'Symptoms', 'Specific_Symptoms', 'Age_Distribution_Ranges_Male', 'Age_Distribution_Ranges_Female', 'Potential_Symptoms'], axis=1, inplace=True)
+# Print out some rows to verify concatenation
+print("Concatenated Symptoms and Potential Symptoms:")
+print(neurological_disorders_df[['Symptoms', 'Potential_Symptoms', 'Combined_Symptoms']].head(), "\n")
 
 
-print(disorders.columns)
+# Preprocessing data
+neurological_disorders_df['Combined_Symptoms'] = neurological_disorders_df['Combined_Symptoms'].apply(lambda x: list(map(int, x.split(','))))
+print("Combine_Symptoms column in Neurological Disorders DataFrame preprocessed:")
+print(neurological_disorders_df[['ID', 'Name', 'Combined_Symptoms']].head(), "\n")
 
+neurological_disorders_df['Percentage_Of_Diagnoses_Male'] = neurological_disorders_df['Percentage_Of_Diagnoses_Male'].astype(float) / 100.0
+neurological_disorders_df['Percentage_Of_Diagnoses_Female'] = neurological_disorders_df['Percentage_Of_Diagnoses_Female'].astype(float) / 100.0
+print("Percentage columns in Neurological Disorders DataFrame converted to fractions:")
+print(neurological_disorders_df[['ID', 'Name', 'Percentage_Of_Diagnoses_Male', 'Percentage_Of_Diagnoses_Female']].head(), "\n")
 
+# Convert age distribution ranges from strings to list of integers
+neurological_disorders_df['Age_Distribution_Ranges_Male'] = neurological_disorders_df['Age_Distribution_Ranges_Male'].apply(lambda x: [int(i) for i in x.split(',')] if x else [])
+neurological_disorders_df['Age_Distribution_Ranges_Female'] = neurological_disorders_df['Age_Distribution_Ranges_Female'].apply(lambda x: [int(i) for i in x.split(',')] if x else [])
+print("Age distribution ranges preprocessed:")
+print(neurological_disorders_df[['ID', 'Name', 'Age_Distribution_Ranges_Male', 'Age_Distribution_Ranges_Female']].head(), "\n")
 
-# Machine learning model preparation
-X = disorders.drop('Name', axis=1)  # Features
-y = disorders['Name']  # Target variable
+# Initialize MultiLabelBinarizer and transform 'Symptoms' into a binary matrix
+mlb = MultiLabelBinarizer()
+symptom_matrix = mlb.fit_transform(neurological_disorders_df['Combined_Symptoms'])
+symptom_features_df = pd.DataFrame(symptom_matrix, columns=mlb.classes_.astype(str))
+print("Combined_Symptoms encoded into binary matrix:")
+print(symptom_features_df.head(), "\n")
 
-# Handling imbalanced data with SMOTE
+# Integrating age distribution ranges into the feature set
+mlb_age_male = MultiLabelBinarizer()
+age_distribution_male_matrix = mlb_age_male.fit_transform(neurological_disorders_df['Age_Distribution_Ranges_Male'])
+age_distribution_male_df = pd.DataFrame(age_distribution_male_matrix, columns=['Male_Age_' + str(i) for i in mlb_age_male.classes_])
+
+mlb_age_female = MultiLabelBinarizer()
+age_distribution_female_matrix = mlb_age_female.fit_transform(neurological_disorders_df['Age_Distribution_Ranges_Female'])
+age_distribution_female_df = pd.DataFrame(age_distribution_female_matrix, columns=['Female_Age_' + str(i) for i in mlb_age_female.classes_])
+
+# Combining all features
+all_features_df = pd.concat([symptom_features_df, age_distribution_male_df, age_distribution_female_df], axis=1)
+print("All features combined:")
+print(all_features_df.head(), "\n")
+
+# Label encoding for diseases
+le = LabelEncoder()
+y = le.fit_transform(neurological_disorders_df['Name'])
+
+# Initialize LeaveOneOut
+loo = LeaveOneOut()
+
+# Variable to store the aggregated classification report
+classification_reports = []
+
+# SMOTE to address class imbalance
 smote = SMOTE(random_state=42)
-X_resampled, y_resampled = smote.fit_resample(X, y)
+X_resampled, y_resampled = smote.fit_resample(all_features_df, y)
+print("Applied SMOTE to address class imbalance in training data.")
 
-# Splitting the dataset
-X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+# Preprocessing and SMOTE goes here
+X_resampled, y_resampled = smote.fit_resample(all_features_df, y)
+print("Applied SMOTE to address class imbalance in training data.")
 
-# Decision tree model training
-clf = DecisionTreeClassifier(random_state=42)
-clf.fit(X_train, y_train)
+# Hyperparameter tuning setup
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 10, 20],
+    'min_samples_split': [2, 5],
+    'min_samples_leaf': [1, 2]
+}
 
-# Predicting and evaluating the model with additional metrics
-predictions = clf.predict(X_test)
-accuracy = accuracy_score(y_test, predictions)
-precision, recall, fscore, _ = precision_recall_fscore_support(y_test, predictions, average='weighted')
-conf_matrix = confusion_matrix(y_test, predictions)
+# Create a RandomForestClassifier object
+rf = RandomForestClassifier(random_state=42)
 
-print(f'Accuracy: {accuracy}')
-print(f'Precision: {precision}')
-print(f'Recall: {recall}')
-print(f'F-Score: {fscore}')
-print(f'Confusion Matrix:\n{conf_matrix}')
+# Create a GridSearchCV object
+grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=loo, scoring='f1_weighted', verbose=2, n_jobs=-1)
 
-# Decision tree visualization with plot_tree (simple method)
-plt.figure(figsize=(20,10))  # Set the figure size (optional)
-plot_tree(clf, filled=True, rounded=True, class_names=y.unique(), feature_names=X.columns)
-plt.show()
+# Fit the GridSearchCV object to the data
+grid_search.fit(X_resampled, y_resampled)
 
-# Alternatively, for a more detailed visualization using Graphviz
-dot_data = export_graphviz(clf, out_file=None, 
-                           feature_names=X.columns,  
-                           class_names=y.unique(),  
-                           filled=True, rounded=True, 
-                           special_characters=True)  
-graph = graphviz.Source(dot_data)  
-graph.render("decision_tree")  # This saves the tree visualization to a file
+# Extracting the best estimator
+best_rf = grid_search.best_estimator_
+
+# Predicting on the entire resampled set for classification report
+y_pred = best_rf.predict(X_resampled)
+
+# Generating the classification report
+report = classification_report(y_resampled, y_pred, output_dict=True, zero_division=0)
+classification_reports.append(report)
+
+# Calculate various performance metrics.
+accuracy = accuracy_score(y_resampled, y_pred)
+precision = precision_score(y_resampled, y_pred, average='weighted', zero_division=0)
+recall = recall_score(y_resampled, y_pred, average='weighted', zero_division=0)
+f1 = f1_score(y_resampled, y_pred, average='weighted', zero_division=0)
+
+# Print the performance metrics.
+print("Classification Report:\n", classification_report(y_resampled, y_pred, zero_division=0))
+print("Accuracy on Resampled Set:", accuracy)
+print("Precision on Resampled Set:", precision)
+print("Recall on Resampled Set:", recall)
+print("F1 Score on Resampled Set:", f1)
+
+
+# Export the tree to a dot file for one of the trees in the forest
+dot_file = 'tree.dot'
+png_file = 'tree.png'
+estimator = best_rf.estimators_[0]  # Take the first estimator from the forest
+export_graphviz(estimator, out_file=dot_file, 
+                feature_names=all_features_df.columns,
+                class_names=le.inverse_transform(range(len(le.classes_))),
+                rounded=True, proportion=False, 
+                precision=2, filled=True)
+
+# Check if Graphviz is installed and add it to the PATH
+# This is necessary for the 'dot' command to work
+os.environ["PATH"] += os.pathsep + 'path/to/graphviz/bin'
+
+# Convert the dot file to PNG using the system command
+try:
+    from subprocess import call
+    call(['dot', '-Tpng', dot_file, '-o', png_file, '-Gdpi=600'])
+    print(f"The decision tree has been saved as {png_file}")
+except Exception as e:
+    print(f"An error occurred: {e}")
+
+# Calculate the average performance metrics across all LOO splits
+avg_precision = sum(d['weighted avg']['precision'] for d in classification_reports) / len(classification_reports)
+avg_recall = sum(d['weighted avg']['recall'] for d in classification_reports) / len(classification_reports)
+avg_f1 = sum(d['weighted avg']['f1-score'] for d in classification_reports) / len(classification_reports)
+
+# Print the average performance metrics
+print(f"Average Precision: {avg_precision:.2f}")
+print(f"Average Recall: {avg_recall:.2f}")
+print(f"Average F1 Score: {avg_f1:.2f}")
+
+
+mlb_symptoms_filename = 'neurological_disorder_mlb_symptoms_1.1.joblib'
+dump(mlb, mlb_symptoms_filename)
+print("Symptoms MultiLabelBinarizer instance saved.")
+
+mlb_age_female_filename = 'neurological_disorder_mlb_age_female_1.1.joblib'
+dump(mlb_age_female, mlb_age_female_filename)
+print("Age Female MultiLabelBinarizer instance saved.")
+
+mlb_age_male_filename = 'neurological_disorder_mlb_age_male_1.1.joblib'
+dump(mlb_age_male, mlb_age_male_filename)
+print("Age Male MultiLabelBinarizer instance saved.")
+
+label_encoder_filename = 'neurological_disorder_label_encoder_1.1.joblib'
+dump(le, label_encoder_filename)
+print(f"LabelEncoder instance saved as {label_encoder_filename}")
+
+model_filename = 'neurological_disorder_classifier_1.1.joblib'
+dump(best_rf, model_filename)
+print(f"Model saved as {model_filename}")

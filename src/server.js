@@ -1,6 +1,8 @@
 const express = require('express');
 const sql = require('mssql');
 const bodyParser = require('body-parser');
+const { exec } = require("child_process"); // Step 1: Include exec module
+
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -74,10 +76,25 @@ app.get('/Disorders', (req, res) => {
     });
 });
 
+
+function callPythonScript(symptomsString, age, gender, callback) {
+    const scriptPath = "machineLearning/predictor.py"; 
+    const command = `python ${scriptPath} '${symptomsString}' ${age} '${gender}'`;
+
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            return callback(`Error: ${error}`);
+        }
+        callback(stdout.trim());
+    });
+}
+
+
 // Endpoint to handle form submission
 app.post('/submit-form', async (req, res) => {
     console.log('Received form submission:', req.body);
-    
+
     const symptomsArray = req.body.symptoms;
     let symptomsString = '';
 
@@ -102,7 +119,7 @@ app.post('/submit-form', async (req, res) => {
         if (req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime())) {
             formattedDateOfBirth = new Date(req.body.dateOfBirth).toISOString().split('T')[0];
         } else {
-            formattedDateOfBirth = null; 
+            formattedDateOfBirth = null;
             console.log('Invalid or missing dateOfBirth. Set to null.');
         }
 
@@ -121,38 +138,17 @@ app.post('/submit-form', async (req, res) => {
         request.input('BiologicalSex', sql.VarChar, biologicalSex);
         request.input('Age', sql.Int, age);
 
-
         const patientInsertQuery = `INSERT INTO PatientData (Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Biological_Sex, Age) VALUES (@Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @BiologicalSex, @Age)`;
         await request.query(patientInsertQuery);
 
-        // Assuming you have a SQL query ready for comparing disorders and symptoms
-        const disordersQuery = `
-            DECLARE @totalPatientSymptoms INT = ${totalPatientSymptoms};
-            SELECT ID, Name, MatchingSymptoms
-            FROM (
-                SELECT ID, Name, Symptoms,
-                    (
-                        SELECT COUNT(*)
-                        FROM STRING_SPLIT(Symptoms, ',') AS splitSymptoms
-                        WHERE splitSymptoms.value IN (
-                            SELECT value
-                            FROM STRING_SPLIT(@symptomsString, ',')
-                        )
-                    ) AS MatchingSymptoms,
-                    @totalPatientSymptoms AS TotalPatientSymptoms
-                FROM Neurological_Disorders
-            ) AS Subquery
-            WHERE (CAST(MatchingSymptoms AS FLOAT) / CAST(@totalPatientSymptoms AS FLOAT)) >= 0.25
-            ORDER BY MatchingSymptoms DESC`;
-
-        const disordersResult = await request.input('symptomsString', sql.VarChar, symptomsString)
-            .query(disordersQuery);
-
-        // Aggregate results and send response
+        // After saving patient data, call the Python script for prediction
+    callPythonScript(symptomsString, age, biologicalSex, (predictionResult) => {
+        console.log("Prediction Result:", predictionResult);
         res.json({
             patientInsertionResult: "Patient data saved successfully.",
-            disordersComparisonResult: disordersResult.recordset
+            predictionResult: predictionResult // This will now include the prediction result
         });
+    });
     } catch (err) {
         console.error('Error:', err);
         res.status(500).send('Server error');
