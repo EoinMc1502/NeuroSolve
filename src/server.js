@@ -78,8 +78,10 @@ app.get('/Disorders', (req, res) => {
 
 
 function callPythonScript(symptomsString, age, gender, callback) {
-    const scriptPath = "machineLearning/predictor.py"; 
-    const command = `python ${scriptPath} '${symptomsString}' ${age} '${gender}'`;
+    // Adjusted to use the full path to your Python executable
+    const pythonExecutable = "/Users/Eoin_1/neurologydiagnosissystem/machineLearning/bin/python3";
+    const scriptPath = "machineLearning/predictor.py";
+    const command = `${pythonExecutable} ${scriptPath} '${symptomsString}' ${age} '${gender}'`;
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -89,6 +91,7 @@ function callPythonScript(symptomsString, age, gender, callback) {
         callback(stdout.trim());
     });
 }
+
 
 
 // Endpoint to handle form submission
@@ -143,6 +146,7 @@ app.post('/submit-form', async (req, res) => {
 
         // After saving patient data, call the Python script for prediction
     callPythonScript(symptomsString, age, biologicalSex, (predictionResult) => {
+        console.log("Age: ", age);
         console.log("Prediction Result:", predictionResult);
         res.json({
             patientInsertionResult: "Patient data saved successfully.",
