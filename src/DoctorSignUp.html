@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Signup - Neuro Solves</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .signup-container {
+            background: #222;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            width: 40%;
+            min-width: 300px;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input[type="text"], input[type="password"], input[type="email"] {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            background: #444;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #556;
+            color: white;
+            font-size: 18px;
+        }
+        button:hover {
+            background: #667;
+        }
+        .form-group label {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <h2>Doctor Signup</h2>
+        <form id="doctorSignupForm">
+            <div class="form-group">
+                <label for="access-code">Access Code:</label>
+                <input type="password" id="access-code" name="accessCode" required>
+            </div>
+            <div class="form-group">
+                <label for="name">Full Name:</label>
+                <input type="text" id="name" name="fullName" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="facility">Medical Facility:</label>
+                <input type="text" id="facility" name="medicalFacility" required>
+            </div>
+            <button type="submit">Signup</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        document.getElementById('doctorSignupForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = {
+                accessCode: document.getElementById('access-code').value,
+                fullName: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                medicalFacility: document.getElementById('facility').value
+            };
+            $.ajax({
+                url: 'https://localhost:3000/doctor-signup',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    console.log('Signup successful:', response);
+                    alert('Signup successful!');
+                    window.location.href = 'SignUoLogin.html';
+                    // Redirect to login page or dashboard here
+                },
+                error: function(xhr, status, error) {
+                    console.error('Signup failed:', xhr.responseText);
+                    alert('Signup failed: ' + xhr.responseText);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

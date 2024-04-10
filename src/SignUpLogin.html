@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro Solves - Signup/Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 95%;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .auth-form {
+            background: #222;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+            background: #222;
+            color: white;
+            border-radius: 5px;
+        }
+        .auth-form button, #messageBox button {
+            width: 100%;
+            padding: 10px;
+            background: #555;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .auth-form button:hover, #messageBox button:hover {
+            background: #777;
+        }
+        .switch-form {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .switch-form a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .switch-form a:hover {
+            text-decoration: underline;
+        }
+        /* Enhanced Message Box Styles */
+        #messageBox {
+            display: none; 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background-color: #222; /* Darker shade for the theme */
+            color: #fff;
+            padding: 40px; /* Increased padding for larger box */
+            border-radius: 8px; /* Soft rounded corners */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+            width: 30%; /* Adjustable based on preference */
+            min-width: 300px; /* Ensures box is not too small on narrow screens */
+            z-index: 1000; /* Ensures it's above other elements */
+            box-sizing: border-box; /* Ensures padding doesn't affect overall width */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Signup/Login</h2>
+        <div id="signup-form" class="auth-form">
+            <h3>Signup</h3>
+            <form id="signupForm">
+                <label for="signup-email">Email:</label>
+                <input type="email" id="signup-email" name="email" required>
+                
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" name="password" required>
+                
+                <button type="submit">Signup</button>
+            </form>
+            <div class="switch-form">Already have an account? <a href="#" onclick="switchForm('login')">Login</a></div>
+        </div>
+        
+        <div id="login-form" class="auth-form" style="display:none;">
+            <h3>Login</h3>
+            <form id="loginForm">
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" name="email" required>
+                
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" name="password" required>
+                
+                <button type="submit">Login</button>
+            </form>
+            <div class="switch-form">Need an account? <a href="#" onclick="switchForm('signup')">Signup</a></div>
+        </div>
+    </div>
+
+    <!-- Updated Message Box -->
+    <div id="messageBox" style="display: none;">
+        <p id="messageContent"></p>
+        <button onclick="closeMessageBox()">Close</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#signupForm').submit(function(event) {
+                event.preventDefault();
+                const userData = {
+                    email: $('#signup-email').val(),
+                    password: $('#signup-password').val()
+                };
+                
+                $.ajax({
+                    url: 'https://localhost:3000/signup',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(userData),
+                    success: function(response) {
+                        // Display success message
+                        $('#messageContent').text('Signup successful');
+                        $('#messageBox').show();
+
+                        switchForm('login');
+                    },
+                    error: function(xhr) {
+                        // Display error message
+                        $('#messageContent').text('Signup failed: ' + xhr.responseText);
+                        $('#messageBox').show();
+                    }
+                });
+            });
+
+            $('#loginForm').submit(function(event) {
+                event.preventDefault();
+                const loginData = {
+                    email: $('#login-email').val(),
+                    password: $('#login-password').val()
+                };
+
+                $.ajax({
+                    url: 'https://localhost:3000/login',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(loginData),
+                    xhrFields: {
+                        withCredentials: true // Important: This must be true to include cookies in cross-origin requests
+                    },
+                    success: function(response) {
+                        // Here, you can redirect to another page or change the UI accordingly
+                        window.location.href = 'home.html'; // Redirect to home page or dashboard
+                        console.log("login done");
+                    },
+                    error: function(xhr) {
+                        // Handle login error
+                        $('#messageContent').text('Login failed: ' + xhr.responseText);
+                        $('#messageBox').show();
+                    }
+                });
+            });
+        });
+
+        function closeMessageBox() {
+            $('#messageBox').hide();
+        }
+
+        function switchForm(form) {
+            if (form === 'signup') {
+                $('#login-form').hide();
+                $('#signup-form').show();
+            } else {
+                $('#signup-form').hide();
+                $('#login-form').show();
+            }
+        }
+    </script>
+</body>
+</html>

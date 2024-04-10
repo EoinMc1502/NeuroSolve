@@ -159,6 +159,119 @@
         .extra-space {
             height: 30px; /* Adjust the height as needed */
         }
+        .email-container {
+            margin-top: 20px; /* Adds some space above the email container */
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Spreads the input and button */
+            background-color: #222; /* Dark background */
+            padding: 10px;
+            border-radius: 5px; /* Soft rounded corners */
+        }
+
+        .email-container input[type="email"] {
+            width: 70%;
+            background-color: #333;
+            border: 2px solid #555;
+            padding: 10px 15px;
+            color: #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .email-container input[type="email"]::placeholder {
+            color: #888;
+        }
+
+        .email-container .send-email-button {
+            background-color: #444;
+            border: none;
+            padding: 10px 20px;
+            color: #ddd;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-container .send-email-button:hover {
+            background-color: #666;
+            color: #fff;
+        }
+        .add-symptom-button {
+            height: 50px;
+            background: #444; /* Slightly darker than the main button for differentiation */
+            color: #ccc; /* Light color for visibility */
+            font-size: 18px; /* Large font size for emphasis */
+            border: none; /* No border for a modern look */
+            cursor: pointer; /* Changes the cursor to indicate interactiveness */
+            margin-top: 20px; /* Space above the button */
+            width: 100%; /* Full width of its container for prominence */
+            transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+        }
+
+        .add-symptom-button:hover {
+            background: #555; /* Lightens the button on hover for a feedback effect */
+            color: #fff; /* Brightens the text color for better visibility */
+        }
+        .add-symptom-box {
+            display: none; /* Initially hidden */
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #222;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            z-index: 100; /* Ensure it sits above other content */
+            width: 400px; /* Adjust based on your needs */
+        }
+
+        .add-symptom-box h2 {
+            color: #ccc;
+            text-align: center;
+        }
+
+        .add-symptom-box input[type="text"] {
+            width: calc(100% - 24px); /* Full width minus padding */
+            padding: 10px;
+            margin-bottom: 20px; /* Space between the input and the button */
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #333;
+            color: #ddd;
+        }
+
+        .add-symptom-box button {
+            display: block; /* Ensure it fills the container width */
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #444;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-symptom-box button:hover {
+            background-color: #555;
+        }
+        .close-symptom-box {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            color: #ccc;
+        }
+
+        .close-symptom-box:hover {
+            color: #fff;
+        }
+
     </style>
 </head>
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -197,12 +310,13 @@
         console.log('Form Data:', formData);
 
         $.ajax({
-            url: 'http://localhost:3000/submit-form',
+            url: 'https://localhost:3000/submit-form',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(formData),
             success: function (response) {
-                
+                console.log("AJAX response:", response);
+                console.log("Response returned: ", response.patientInsertionResult);
                 showDiagnosisProcess(JSON.stringify(response));
             },
             error: function (error) {
@@ -250,7 +364,7 @@ function getSelectValues(container) {
 
     document.addEventListener('DOMContentLoaded', function () {
         // your existing JavaScript code here
-        fetch('http://localhost:3000/symptoms')
+        fetch('https://localhost:3000/symptoms')
             .then(response => response.json())
             .then(data => {
                 const selectElement = document.getElementById('symptoms');
@@ -263,7 +377,7 @@ function getSelectValues(container) {
             })
             .catch(error => console.error('Error fetching symptoms:', error));
 
-        fetch('http://localhost:3000/FamilyMembers')
+        fetch('https://localhost:3000/FamilyMembers')
             .then(response => response.json())
             .then(data => {
                 const selectElement = document.getElementById('FamilyMembers');
@@ -276,7 +390,7 @@ function getSelectValues(container) {
             })
             .catch(error => console.error('Error fetching FamilyMembers:', error)
 
-        ,fetch('http://localhost:3000/Disorders')
+        ,fetch('https://localhost:3000/Disorders')
             .then(response => response.json())
             .then(data => {
                 const selectElement = document.getElementById('Disorders');
@@ -333,6 +447,10 @@ function getSelectValues(container) {
         document.getElementById('messageBox').style.display = 'none';
     }
 
+    function closeMessageBoxForSymptoms() {
+        document.getElementById('messageBoxForSymptoms').style.display = 'none';
+    }
+
     function showMessage(title, message) {
         document.getElementById('messageBox').style.display = 'flex'; // Show the message box
         document.querySelector('.message-content h2').textContent = title; // Set the message box title
@@ -340,27 +458,69 @@ function getSelectValues(container) {
         document.querySelector('.message-content p').innerHTML = message.replace(/\n/g, '<br>'); // Set the message text, converting newlines to HTML line breaks
     }
 
-    // Modify your existing showDiagnosisProcess or similar function to call showMessage()
-    function showDiagnosisProcess(jsonResponse) {
-    // Parse the JSON response
-    const response = JSON.parse(jsonResponse);
+    function showMessageForSymptoms(title, message) {
+        document.getElementById('messageBoxForSymptoms').style.display = 'flex'; // Show the message box
+        document.querySelector('#messageBoxForSymptoms .message-content h2').textContent = title; // Set the message box title
+        // document.querySelector('.message-content p').textContent = message; // Set the message text
+        document.querySelector('#messageBoxForSymptoms .message-content p').innerHTML = message.replace(/\n/g, '<br>'); // Set the message text, converting newlines to HTML line breaks
+    }
 
-    // Extract the patient insertion result
-    const patientInsertionResult = response.patientInsertionResult;
+    function showDiagnosisProcess(response) {
+    // Check if response is a string and parse it to an object
+    if (typeof response === 'string') {
+        response = JSON.parse(response);
+    }
 
-    // Start building the message with patient insertion result
-    let message = patientInsertionResult + "\n\nDisorders and Matching Symptoms:\n";
+    let message = `<strong>Prediction Result:</strong> ${response.predictionResult || 'No prediction result available.'}<br>`;
 
-    // Iterate through the disorders comparison result to build the message
-    response.disordersComparisonResult.forEach(disorder => {
-        message += `${disorder.Name} - Matching Symptoms: ${disorder.MatchingSymptoms}\n`;
-    });
+    // Check if openAIResponse exists and is a string before attempting to replace line breaks
+    if (response.openAIResponse && typeof response.openAIResponse === 'string') {
+        const openAIResponseFormatted = response.openAIResponse.replace(/\n/g, '<br>');
+        message += `<strong>OpenAI API Response:</strong><br>${openAIResponseFormatted}`;
+    } else {
+        message += `<strong>OpenAI API Response:</strong> No response available.`;
+    }
 
     // Use the showMessage function to display the formatted message
-    // Assuming 'showMessage' takes a title and a message
-    const title = "Preliminary Disorders Based Off Symptoms";
+    const title = "Diagnosis Information";
     showMessage(title, message);
     }
+
+
+    function sendEmail() {
+    const email = document.getElementById('emailInput').value;
+    const messageContent = document.querySelector('.message-content p').innerHTML; // Assuming message is in <p>
+
+    if (!email) {
+        alert("Please enter an email.");
+        return;
+    }
+
+    // Prepare data to send to your server
+    const data = {
+        email: email,
+        message: messageContent
+    };
+
+    // Send data to your server
+    $.ajax({
+        url: 'https://localhost:3000/send-email', // Update with your server's endpoint
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            alert("Email sent successfully!");
+        },
+        error: function(error) {
+            console.error('Error sending email:', error);
+            alert("Failed to send email.");
+        }
+    });
+}
+    </script>
+</body>
+
+
 </script>
 <body>
     <header>
@@ -444,23 +604,94 @@ function getSelectValues(container) {
 
             <label for="symptoms">Symptoms:</label>
             <select name="symptoms" id="symptoms" multiple class="symptoms-select" multiple></select>
-            <!-- <textarea id="symptoms" name="symptoms"></textarea> -->
-
-            <!-- <label for="testResults">Test Results/Reports:</label>
-            <input type="text" id="testResults" name="testResults"></input> -->
+            
+            <button type="button" class="add-symptom-button" id="addNewSymptom">Add New Symptom</button>
 
             <div class="extra-space"></div>
 
             <input type="submit" class="button" value="Submit">
         </form>
     </div>
+
+    <div class="add-symptom-box" id="addSymptomBox">
+        <span class="close-symptom-box" id="closeAddSymptomBox">&times;</span>
+        <h2>Add New Symptom</h2>
+        <input type="text" id="newSymptomName" placeholder="Symptom name">
+        <button id="addSymptom">Add</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#addNewSymptom').on('click', function() {
+                $('#addSymptomBox').show();
+            });
+
+            $('#addSymptom').on('click', function() {
+                const newSymptomName = $('#newSymptomName').val();
+                if (!newSymptomName) {
+                    alert('Please enter a symptom name.');
+                    return;
+                }
+
+                // Construct the data to send in the POST request
+                const data = { newSymptom: newSymptomName };
+
+                // Use jQuery.ajax to send the POST request
+                $.ajax({
+                    url: 'https://localhost:3000/check-symptom', // Adjust this URL as necessary
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                    console.log('Response:', response);
+                    // Update UI based on the response
+                    if (response.added) {
+                        showMessageForSymptoms('Symptom Added', response.message);
+                    } else {
+                        showMessageForSymptoms('Symptom Not Added', `${response.message} It is similar to: ${response.similarTo}`);
+                    }
+                    $('#addSymptomBox').hide();
+                    $('#newSymptomName').val(''); // Clear the input field
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    showMessageForSymptoms('Error', 'Failed to check the symptom. ' + error);
+                    $('#addSymptomBox').hide();
+                }
+                });
+            });
+
+
+            $('#closeAddSymptomBox').on('click', function() {
+                $('#newSymptomName').val('');
+                $('#addSymptomBox').hide(); // Hide the addSymptomBox
+            });
+        });
+    </script>
+
     <div class="message-box" id="messageBox" style="display:none;"> <!-- Initially hidden -->
         <div class="message-content">
             <span class="close-btn" onclick="closeMessageBox()">&times;</span>
             <h2>Message Title</h2>
             <p>This is your message content. You can customize it as needed.</p>
+
+            <!-- Add email input and send button -->
+            <div class="email-container">
+                <input type="email" id="emailInput" name="userEmail" placeholder="Enter your email to receive a copy" />
+                <button type="button" id="sendEmail" class="send-email-button">Send</button>
+            </div>
         </div>
     </div>
+
+    <div class="message-box" id="messageBoxForSymptoms" style="display:none;"> <!-- Initially hidden -->
+        <div class="message-content">
+            <span class="close-btn" onclick="closeMessageBoxForSymptoms()">&times;</span>
+            <h2>Message Title</h2>
+            <p>This is your message content. You can customize it as needed.</p>
+        </div>
+    </div>
+    
     <div class="extra-space"></div>
 </body>
 </html>
