@@ -17,7 +17,6 @@ const fs = require('fs');
 
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 // Secret key for JWT signing
-const JWT_SECRET = 'your_secret_key'; // You should generate a secure secret key
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -53,24 +52,26 @@ const cors = require('cors');
 app.use(cors(corsOptions));
 app.use(express.static(path.join(__dirname, 'src')));
 
+
+
 // Database configuration
 const config = {
-    user: 'emcnamee08',
-    password: 'Mcnamee1502',
-    server: 'eoinmcnamee.database.windows.net', 
-    database: 'NeurologicalDiagnosisSystem',
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
     options: {
-        encrypt: true, 
-        trustServerCertificate: true 
+        encrypt: true,
+        trustServerCertificate: true
     }
-}
+};
 
 // Your email configuration
 const transporter = nodemailer.createTransport({
     service: 'gmail', // For example, use Gmail. Configure this with your SMTP provider.
     auth: {
-        user: 'neurosolvepredictions@gmail.com',
-        pass: 'uhix qrfz bnpy dhzg'
+        user: process.env.NEURO_EMAIL,
+        pass: process.env.NEURO_EMAIL_PASSWORD
     }
 });
 
@@ -90,7 +91,7 @@ function authenticateToken(req, res, next) {
 
     console.log("Token found, verifying:", token);
     
-    jwt.verify(token, 'your_secret_key', (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY, (err, user) => {
         if (err) {
             console.log("Token verification failed:", err);
             return res.sendStatus(403); // if token is not valid, return Forbidden
@@ -104,7 +105,7 @@ function authenticateToken(req, res, next) {
 
 
 
-app.post('/send-email', (req, res) => {
+app.post('/send-email', authenticateToken,  (req, res) => {
     const { email, message } = req.body;
 
     const mailOptions = {
@@ -127,10 +128,10 @@ app.post('/send-email', (req, res) => {
 
 
 const pool = new sql.ConnectionPool({
-    user: 'emcnamee08',
-    password: 'Mcnamee1502',
-    server: 'eoinmcnamee.database.windows.net', 
-    database: 'NeurologicalDiagnosisSystem',
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER, 
+    database: process.env.DB_DATABASE,
     options: {
         encrypt: true, 
         trustServerCertificate: true // Depending on your security settings, you might not need this
@@ -275,7 +276,7 @@ app.post('/login', async (req, res) => {
                     email: userRecord.Email,
                     role: userRecord.Role // Assuming the role is fetched and available here
                 },
-                JWT_SECRET,
+                process.env.JWT_SECRET_KEY,
                 { expiresIn: '24h' } // Token expires in 24 hours
             );
 
@@ -361,75 +362,179 @@ app.get('/Disorders', (req, res) => {
 });
 
 
-function callPythonScript(symptomsString, age, gender, callback) {
-    const pythonExecutable = "/Users/Eoin_1/neurologydiagnosissystem/machineLearning/bin/python3";
-    const scriptPath = "machineLearning/predictor.py";
-    const command = `${pythonExecutable} ${scriptPath} '${symptomsString}' ${age} '${gender}'`;
+app.get('/Doctors', (req, res) => {
+    console.log("Fetching Doctors from the database...");
+    const request = pool.request();
+    request.input('Role', sql.VarChar, 'doctor');
+    request.query('SELECT UserID, FullName, MedicalFacility FROM Users WHERE role = @Role', (err, result) => {
+        if (err) {
+            console.error('Error fetching Users from database:', err);
+            res.status(500).send('Error fetching Doctors');
+            return;
+        }
+        console.log('Doctors fetched successfully:', result.recordset);
+        res.json(result.recordset);
+    });
+});
+
+
+
+
+// Function to fetch symptom names from the database based on IDs
+async function getSymptomNamesByIds(ids) {
+    try {
+        const query = `SELECT ID, Name FROM Symptoms WHERE ID IN (${ids.join(',')})`;
+        const result = await pool.request().query(query);
+        return result.recordset.reduce((acc, item) => {
+            acc[item.ID] = item.Name;
+            return acc;
+        }, {});
+    } catch (err) {
+        console.error('Failed to execute query:', err);
+        throw err;
+    }
+}
+
+function callPythonScript(symptomsString, age, biologicalSex, callback) {
+    const pythonExecutable = path.join(__dirname, '..', 'machineLearning', 'bin', 'python3');
+    const scriptPath = path.join(__dirname, '..', 'machineLearning', 'predictor.py');
+    const command = `${pythonExecutable} ${scriptPath} '${symptomsString}' ${age} '${biologicalSex}'`;
 
     exec(command, (error, stdout, stderr) => {
-        if (error || !stdout.trim()) {
+        if (error || stderr || !stdout.trim()) {
             console.error(`exec error: ${error}`, `stderr: ${stderr}`);
             return callback(`Error: ${error || stderr}`, null);
         }
-        callback(null, stdout.trim());
+        try {
+            const result = JSON.parse(stdout.trim());
+            callback(null, result);
+        } catch (parseError) {
+            console.error(`Error parsing Python script output: ${parseError}`);
+            callback(`Error parsing output: ${parseError}`, null);
+        }
     });
 }
 
 
+// Function to categorize symptom IDs into known and new symptoms
+async function categorizeSymptoms(symptomIds) {
+    try {
+        // Initialize arrays to hold IDs only
+        let knownSymptomIds = [];
+        let newSymptomIds = [];
 
-// Endpoint to handle form submission
-app.post('/submit-form', async (req, res) => {
+        // Prepare and execute the query to fetch known symptoms
+        const queryKnown = `SELECT ID FROM Symptoms WHERE ID IN (${symptomIds.join(',')})`;
+        const knownResults = await pool.request().query(queryKnown);
+        knownSymptomIds = knownResults.recordset.map(record => record.ID);
+
+        // Prepare and execute the query to fetch new symptoms
+        const queryNew = `SELECT ID FROM NewSymptoms WHERE ID IN (${symptomIds.join(',')})`;
+        const newResults = await pool.request().query(queryNew);
+        newSymptomIds = newResults.recordset.map(record => record.ID);
+
+        // Convert arrays of IDs into strings
+        const knownSymptoms = knownSymptomIds.join(',');
+        const newSymptoms = newSymptomIds.join(',');
+
+        return { knownSymptoms, newSymptoms };
+    } catch (err) {
+        console.error('Failed to categorize symptoms:', err);
+        throw err;
+    }
+}
+
+
+async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {
+    try {
+        // Retrieve current new symptoms for the disorder by its name
+        const query = `SELECT New_Symptoms FROM Neurological_Disorders WHERE Name = @DisorderName`;
+        const result = await pool.request()
+            .input('DisorderName', sql.VarChar, disorderName)
+            .query(query);
+
+        let currentNewSymptoms = result.recordset[0]?.NewSymptoms ? result.recordset[0].NewSymptoms.split(',') : [];
+        let newSymptomIds = newSymptomsString.split(',').map(Number);
+
+        // Determine which new symptoms need to be added
+        let symptomsToAdd = newSymptomIds.filter(id => !currentNewSymptoms.includes(id));
+
+        // If there are new symptoms to add, update the database
+        if (symptomsToAdd.length > 0) {
+            let updatedNewSymptoms = [...new Set([...currentNewSymptoms, ...symptomsToAdd])].join(',');
+            const updateQuery = `UPDATE Neurological_Disorders SET New_Symptoms = @NewSymptoms WHERE Name = @DisorderName`;
+            await pool.request()
+                .input('NewSymptoms', sql.VarChar, updatedNewSymptoms)
+                .input('DisorderName', sql.VarChar, disorderName)
+                .query(updateQuery);
+            console.log(`Updated NewSymptoms for Disorder '${disorderName}': ${updatedNewSymptoms}`);
+        } else {
+            console.log(`No new symptoms to add for Disorder '${disorderName}'.`);
+        }
+
+        return symptomsToAdd; // Returns the list of newly added symptoms
+    } catch (err) {
+        console.error('Failed to update new symptoms for disorder:', err);
+        throw err;
+    }
+}
+
+
+
+app.post('/submit-form', authenticateToken, async (req, res) => {
     console.log('Received form submission:', req.body);
 
     const symptomsArray = req.body.symptoms;
-    let symptomsString = '';
-    if (Array.isArray(symptomsArray)) {
-        symptomsString = symptomsArray.join(',');
-    } else if (symptomsArray) {
-        symptomsString = symptomsArray;
-    }
+    let symptomsString = symptomsArray instanceof Array ? symptomsArray.join(',') : symptomsArray.toString();
+    const { userID, patientTitle, patientFirstName, patientLastName, streetAddress, city, state, postalCode, biologicalSex, country, familyHistory, age, doctor } = req.body;
 
-    const { patientTitle, patientFirstName, patientLastName, streetAddress, city, state, postalCode, biologicalSex, country, familyHistory, age } = req.body;
-    
-    let formattedDateOfBirth;
-    if (req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime())) {
-        formattedDateOfBirth = new Date(req.body.dateOfBirth).toISOString().split('T')[0];
-    } else {
-        formattedDateOfBirth = null;
-        console.log('Invalid or missing dateOfBirth. Set to null.');
-    }
+    let formattedDateOfBirth = req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime()) ? new Date(req.body.dateOfBirth).toISOString().split('T')[0] : null;
 
     try {
-        const request = pool.request(); ;
-        request.input('Title', sql.VarChar, patientTitle);
-        request.input('First_Name', sql.VarChar, patientFirstName);
-        request.input('Last_Name', sql.VarChar, patientLastName);
-        request.input('Street_Address', sql.VarChar, streetAddress);
-        request.input('City', sql.VarChar, city);
-        request.input('State', sql.VarChar, state);
-        request.input('Postcode', sql.VarChar, postalCode);
-        request.input('Country', sql.VarChar, country);
-        request.input('DOB', sql.Date, formattedDateOfBirth);
-        request.input('Family_History', sql.VarChar, familyHistory);
-        request.input('Symptoms', sql.VarChar, symptomsString);
-        request.input('BiologicalSex', sql.VarChar, biologicalSex);
-        request.input('Age', sql.Int, age);
-
-        const patientInsertQuery = `INSERT INTO PatientData (Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Biological_Sex, Age) VALUES (@Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @BiologicalSex, @Age)`;
-        await request.query(patientInsertQuery);
-
-        callPythonScript(symptomsString, age, biologicalSex, async (error, predictionResult) => {
+        callPythonScript(symptomsString, age, biologicalSex, async (error, result) => {
             if (error) {
                 console.error('Error in prediction:', error);
                 return res.status(500).send('Error processing prediction');
             }
-            console.log("Prediction Result:", predictionResult);
+
+            //prepares user inputted symptoms for OpenAI prompt
+            const symptomsArrayNumbers = req.body.symptoms.map(Number);
+            console.log('symptom array numbers: ', symptomsArrayNumbers);
+            const symptomNames = await getSymptomNamesByIds(symptomsArrayNumbers);
+            console.log('symptom names: ', symptomNames);
+            const symptomsString = Object.values(symptomNames).join(', ');
+
+            console.log('symptom names string: ', symptomsString);
+
+
+            let symptomIds = result.reasoning.map(item => parseInt(item.feature));
+            const symptomNamesMap = await getSymptomNamesByIds(symptomIds);
+            const reasoningWithNames = result.reasoning.map(item => ({
+                feature: symptomNamesMap[item.feature] || 'Unknown Symptom',
+                effect: item.effect
+            }));
+
+
+
+            const { knownSymptoms, newSymptoms } = await categorizeSymptoms(symptomsArray);
+
+            console.log('Known Symptom names: ', knownSymptoms);
+            console.log('New Symptom names: ', newSymptoms);
+
+
+            const diagnosticReasoningForPrompt = reasoningWithNames.map(item => `${item.feature}: Impact of ${item.effect}`).join(', ');
+
+            const diagnosticReasoning = reasoningWithNames.map(item => item.feature).join(', ');
+
+
+            const openAiPrompt = `The model has diagnosed the patient with ${result.prediction} based on the analysis of various factors. The user reported the following symptoms: ${symptomsString}. Among these, the model identified certain symptoms as key influencing factors for this diagnosis, detailing their specific impacts: ${diagnosticReasoningForPrompt}. Please list any of these key symptoms that directly match the user's reported symptoms and explain their relevance to the diagnosis. If there are no matches, it is important to note that the absence of these key symptoms in the user's report does not invalidate the diagnosis, as the model considers multiple factors. Could you explain why these key factors are critical for this diagnosis? Additionally, could you suggest potential diagnostic tests that could confirm this diagnosis and recommend possible treatments, should the diagnosis be confirmed by a medical professional? Please note that the suggestions provided by this model are preliminary and should be followed up with professional medical advice.`;
+
 
             const data = JSON.stringify({
                 model: "gpt-3.5-turbo",
                 messages: [{
                     role: "user",
-                    content: `Given a diagnosis of ${predictionResult}, what are some possible tests that can confirm this prediction and then what are possible treatments for this prediction?`
+                    content: openAiPrompt
                 }]
             });
 
@@ -445,27 +550,50 @@ app.post('/submit-form', async (req, res) => {
                 }
             };
 
-            const apiReq = https.request(options, (apiRes) => {
+            const apiReq = https.request(options, async (apiRes) => {
                 let responseBody = '';
-
                 apiRes.on('data', (chunk) => responseBody += chunk);
-
-                apiRes.on('end', () => {
-                    console.log("Raw OpenAI API response:", responseBody); // Log the raw response for debugging
+                apiRes.on('end', async () => {
                     try {
                         const responseContent = JSON.parse(responseBody);
-                        if (responseContent.choices && responseContent.choices.length > 0 && responseContent.choices[0].message) {
-                            const content = responseContent.choices[0].message.content.trim();
-                            console.log("OpenAI API Response:", content);
-                            res.json({
-                                patientInsertionResult: "Patient data saved successfully.",
-                                predictionResult: predictionResult,
-                                openAIResponse: content
-                            });
-                        } else {
-                            console.error("Unexpected response structure from OpenAI API", responseContent);
-                            res.status(500).send('Unexpected response structure from OpenAI API');
-                        }
+                        console.log("OpenAI API Response:", responseContent);
+
+                        const currentDate = new Date();
+                        const request = new sql.Request(pool);
+                        request.input('UserID', sql.Int, userID);
+                        request.input('Title', sql.VarChar, patientTitle);
+                        request.input('First_Name', sql.VarChar, patientFirstName);
+                        request.input('Last_Name', sql.VarChar, patientLastName);
+                        request.input('Street_Address', sql.VarChar, streetAddress);
+                        request.input('City', sql.VarChar, city);
+                        request.input('State', sql.VarChar, state);
+                        request.input('Postcode', sql.VarChar, postalCode);
+                        request.input('Country', sql.VarChar, country);
+                        request.input('DOB', sql.Date, formattedDateOfBirth);
+                        request.input('Family_History', sql.VarChar, familyHistory);
+                        request.input('Symptoms', sql.VarChar, knownSymptoms);
+                        request.input('BiologicalSex', sql.VarChar, biologicalSex);
+                        request.input('Age', sql.Int, age);
+                        request.input('CurrentDate', sql.Date, currentDate);
+                        request.input('Diagnosis', sql.VarChar, result.prediction);
+                        request.input('Reasoning', sql.VarChar, diagnosticReasoning);
+                        request.input('DoctorID', sql.Int, doctor);
+                        request.input('NewSymptoms', sql.VarChar, newSymptoms);
+
+                        const patientInsertQuery = `
+                            INSERT INTO PatientData (UserID, Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Biological_Sex, Age, Date, Diagnosis, Diagnosis_Reason, DoctorID, NewSymptoms)
+                            VALUES (@UserID, @Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @BiologicalSex, @Age, @CurrentDate, @Diagnosis, @Reasoning, @DoctorID, @NewSymptoms)
+                        `;
+                        await request.query(patientInsertQuery);
+
+                        const addedSymptoms = await updateNewSymptomsForDisorder(result.prediction, newSymptoms);
+
+                        res.json({
+                            patientInsertionResult: "Patient data saved successfully.",
+                            predictionResult: result.prediction,
+                            diagnosticReasoning: diagnosticReasoning,
+                            openAIResponse: responseContent.choices[0].message.content.trim()
+                        });
                     } catch (parseError) {
                         console.error("Error parsing OpenAI API response:", parseError, "Raw response:", responseBody);
                         res.status(500).send('Error processing the OpenAI response');
@@ -473,19 +601,21 @@ app.post('/submit-form', async (req, res) => {
                 });
             });
 
-            apiReq.on('error', (error) => {
-                console.error("Error calling OpenAI API:", error);
-                res.status(500).send('Error processing the disorder with OpenAI');
+            apiReq.on('error', (e) => {
+                console.error(`Problem with request: ${e.message}`);
+                res.status(500).send('Error contacting OpenAI API');
             });
 
             apiReq.write(data);
             apiReq.end();
         });
     } catch (err) {
-        console.error('Error:', err);
-        res.status(500).send('Server error');
+        console.error('Server error:', err);
+        res.status(500).send('Server error during processing');
     }
 });
+
+
 
 
 
@@ -516,7 +646,7 @@ app.get('/user-details', authenticateToken, (req, res) => {
 
 
 
-app.post('/check-symptom', async (req, res) => {
+app.post('/check-symptom', authenticateToken, async (req, res) => {
     const newSymptom = req.body.newSymptom;
     console.log('Received request to check new symptom:', newSymptom);
 
@@ -623,28 +753,36 @@ app.post('/check-symptom', async (req, res) => {
 
 
 // Endpoint to fetch patient data
-app.post('/fetch-patient-data', async (req, res) => {
+app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
     try {
+        console.log("Fetching patient data...");
+        
         // Connect to your database
         let pool = await sql.connect(config);
+        console.log("Connected to the database.");
 
         // Extract UserID from the request, assuming it's sent in the body. Adjust as necessary.
         const { UserID } = req.body;
+        console.log("UserID:", UserID);
 
         // Query to retrieve patient data. Adjust table and column names as necessary.
         const patientDataQuery = `
-            SELECT PatientID, DoctorID, First_Name, Last_Name, Symptoms, NewSymptoms, DOB, Biological_Sex, Diagnosis, Diagnosis_Reason, Date
-            FROM PatientData
-            WHERE UserID = @UserID
+        SELECT pd.PatientID, pd.DoctorID, pd.First_Name, pd.Last_Name, pd.Symptoms, pd.NewSymptoms, pd.DOB, pd.Biological_Sex, pd.Diagnosis, pd.Diagnosis_Reason, pd.Date
+        FROM PatientData pd
+        INNER JOIN Users u ON pd.UserID = u.UserID
+        WHERE pd.UserID = @UserID OR (u.Role = 'doctor' AND pd.DoctorID = @UserID)
+        
         `;
 
         const patientDataResult = await pool.request()
             .input('UserID', sql.Int, UserID)
             .query(patientDataQuery);
+        console.log("Patient data fetched:", patientDataResult);
 
         // Fetching symptom names
         const symptomsNamesQuery = 'SELECT ID, Name FROM Symptoms';
         const symptomsResult = await pool.request().query(symptomsNamesQuery);
+        console.log("Symptoms result:", symptomsResult);
         const symptomsMap = symptomsResult.recordset.reduce((acc, current) => {
             acc[current.ID] = current.Name;
             return acc;
@@ -653,6 +791,7 @@ app.post('/fetch-patient-data', async (req, res) => {
         // Fetching new symptom names
         const newSymptomsNamesQuery = 'SELECT ID, Name FROM NewSymptoms';
         const newSymptomsResult = await pool.request().query(newSymptomsNamesQuery);
+        console.log("New symptoms result:", newSymptomsResult);
         const newSymptomsMap = newSymptomsResult.recordset.reduce((acc, current) => {
             acc[current.ID] = current.Name;
             return acc;
@@ -669,6 +808,8 @@ app.post('/fetch-patient-data', async (req, res) => {
                 NewSymptoms: newSymptomsNames
             };
         });
+        
+        console.log("Transformed patient data:", patientData);
 
         // Return the transformed patient data
         res.json(patientData);
@@ -677,6 +818,37 @@ app.post('/fetch-patient-data', async (req, res) => {
         res.status(500).send('Error fetching patient data');
     }
 });
+
+app.post('/user-feedback', authenticateToken, async (req, res) => {
+    console.log('Received user feedback:', req.body);
+
+    const { userID, feedback } = req.body;
+    
+    if (!feedback) {
+        return res.status(400).send("Feedback cannot be empty.");
+    }
+
+    try {
+        const request = new sql.Request(pool);
+        request.input('UserID', sql.Int, userID);
+        request.input('Feedback', sql.VarChar, feedback);
+        request.input('Date', sql.DateTime, new Date());
+
+        const insertQuery = `
+            INSERT INTO UserFeedback (UserID, Feedback, Date)
+            VALUES (@UserID, @Feedback, @Date)
+        `;
+
+        await request.query(insertQuery);
+
+        res.status(200).send("Feedback submitted successfully.");
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        res.status(500).send('Failed to submit feedback due to server error.');
+    }
+});
+
+
 
 
 

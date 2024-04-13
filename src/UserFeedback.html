@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro Solve - User Feedback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #222;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-end; /* Aligns the button group to the right */
+            align-items: center;
+            height: 50px; /* Fixed height for the top bar */
+        }
+        .home-button {
+            width: 100px; /* Set width to 50px */
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background: none;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+        }
+        .home-button:hover {
+            background-color: #444; /* Darken background on hover */
+            color: #ddd; /* Change text color on hover */
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            padding: 40px; /* Increased padding for more vertical space */
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            margin-top: 100px; /* Adjust based on the height of the top bar to avoid overlap */
+            height: auto; /* Adjusts based on content */
+            min-height: 400px; /* Minimum height to ensure larger appearance */
+        }
+        h1 {
+            text-align: center;
+            color: white;
+        }
+        textarea {
+            width: calc(100% - 20px);
+            height: 250px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 2px solid #333;
+            border-radius: 4px;
+            background-color: #252525;
+            color: #ddd;
+            margin: 10px 0;
+            font-size: 16px;
+            resize: none;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #333;
+            color: #ddd;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <button class="home-button" onclick="window.location.href='Home.html'">Home</button>
+    </div>
+    <div class="container">
+        <h1>User Feedback</h1>
+        <textarea id="feedback" placeholder="Enter your feedback here..."></textarea>
+        <button onclick="fetchUserDetails()">Send Feedback</button>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        function submitFeedback(userID) {
+            const feedback = document.getElementById('feedback').value;
+            if (!feedback.trim()) {
+                alert('Please enter your feedback before submitting.');
+                return;
+            }
+            const data = { userID: userID, feedback: feedback };
+            $.ajax({
+                url: 'https://localhost:3000/user-feedback',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                xhrFields: { withCredentials: true },
+                success: function(response) {
+                    console.log("Feedback response:", response);
+                    alert("Thank you for your feedback!");
+                },
+                error: function(error) {
+                    console.error('Error sending feedback:', error);
+                    alert("Failed to send feedback.");
+                }
+            });
+        }
+
+        function fetchUserDetails() {
+            $.ajax({
+                url: 'https://localhost:3000/user-details',
+                method: 'GET',
+                xhrFields: { withCredentials: true },
+                success: function(response) {
+                    console.log("User details response:", response);
+                    submitFeedback(response.userID);
+                },
+                error: function() {
+                    console.log("Error fetching user details.");
+                    alert("Failed to fetch user details.");
+                }
+            });
+        }
+    </script>
+</body>
+</html>

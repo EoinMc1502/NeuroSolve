@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neuro Solves</title>
+    <title>Neuro Solve - Predictions</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -287,10 +287,73 @@
     return age;
     }
 
+
+
+    function fetchUserDetails(callback) {
+    $.ajax({
+        url: 'https://localhost:3000/user-details', // Adjust URL as needed
+        type: 'GET',
+        xhrFields: {
+            withCredentials: true // Important: this includes cookies in the request
+        },
+        success: function(response) {
+            console.log("User details response:", response);
+            // Assuming response contains 'UserID'
+            if (response.userID) {
+                callback(null, response.userID); // Pass UserID to callback
+            } else {
+                callback("UserID not found in response", null);
+            }
+        },
+        error: function() {
+            console.log("Error fetching user details.");
+            callback("Error fetching user details.", null);
+        }
+    });
+    }
+
+    function validateForm() {
+    const dateOfBirth = $('#dateOfBirth').val();
+    const biologicalSex = $('#biologicalSex').val();
+    const symptoms = $('#symptoms').val(); // This gets an array of selected symptoms
+
+    // Validate Date of Birth
+    if (!dateOfBirth || new Date(dateOfBirth) > new Date()) {
+        alert('Please enter a valid Date of Birth. Dates in the future are not allowed.');
+        return false;
+    }
+
+    // Validate Biological Sex
+    if (!biologicalSex || biologicalSex === "") {
+        alert('Please select a biological sex.');
+        return false;
+    }
+
+    // Validate Symptoms
+    if (!symptoms || symptoms.length < 3) {
+        alert('Please select at least three symptoms.');
+        return false;
+    }
+
+    return true; // Validation passed
+    }
+
+
+
     function submitForm() {
         
         console.log('Submitting form...');
+
+
+        fetchUserDetails(function(err, userID) {
+        if (err) {
+            console.error(err);
+            return; // Stop form submission if UserID cannot be retrieved
+        }
+
+
         const formData = {
+            userID: userID,
             patientTitle: $('#patientTitle').val(),
             patientFirstName: $('#patientFirstName').val(),
             patientLastName: $('#patientLastName').val(),
@@ -302,9 +365,11 @@
             country: $('#country').val(),
             dateOfBirth: $('#dateOfBirth').val(),
             familyHistory: gatherFamilyHistoryData(),
-            symptoms: $('#symptoms').val(),
+            doctor: $('#doctor').val(),
+            symptoms: $('#symptoms').val()
         };
 
+        console.log("Form Symptoms ..................................:", $('#symptoms').val());
         formData.age = calculateAge(formData.dateOfBirth);
 
         console.log('Form Data:', formData);
@@ -313,10 +378,15 @@
             url: 'https://localhost:3000/submit-form',
             method: 'POST',
             contentType: 'application/json',
+            xhrFields: {
+                withCredentials: true // cookies included
+            },
             data: JSON.stringify(formData),
             success: function (response) {
                 console.log("AJAX response:", response);
                 console.log("Response returned: ", response.patientInsertionResult);
+                console.log("Reasoning frontend:  ", response.diagnosticReasoning);
+                console.log("open ai frontend:  ", response.openAIResponse)
                 showDiagnosisProcess(JSON.stringify(response));
             },
             error: function (error) {
@@ -324,7 +394,8 @@
             }
         });
         return false;
-    }
+    })};
+
 
     function gatherFamilyHistoryData() {
     let familyHistoryData = [];
@@ -405,6 +476,9 @@ function getSelectValues(container) {
         // Attach the submitForm function to the form's onsubmit event
         ,$('#submit-form').submit(function (event) {
             event.preventDefault(); // Prevents default form submission
+            if (!validateForm()) {
+            return false; // Stop form submission if validation fails
+            }
             submitForm();
         })));
 
@@ -466,25 +540,21 @@ function getSelectValues(container) {
     }
 
     function showDiagnosisProcess(response) {
-    // Check if response is a string and parse it to an object
+    // Remove JSON.parse if response is already an object
     if (typeof response === 'string') {
         response = JSON.parse(response);
     }
 
-    let message = `<strong>Prediction Result:</strong> ${response.predictionResult || 'No prediction result available.'}<br>`;
-
-    // Check if openAIResponse exists and is a string before attempting to replace line breaks
-    if (response.openAIResponse && typeof response.openAIResponse === 'string') {
-        const openAIResponseFormatted = response.openAIResponse.replace(/\n/g, '<br>');
-        message += `<strong>OpenAI API Response:</strong><br>${openAIResponseFormatted}`;
-    } else {
-        message += `<strong>OpenAI API Response:</strong> No response available.`;
+    let message = `<strong>Prediction:</strong> ${response.predictionResult}<br><br>`; // Added a line break here
+    message += `<strong>Diagnostic Key Symptoms For Diagnosing:</strong> ${response.diagnosticReasoning}<br><br>`; // And here
+    if (response.openAIResponse) {
+        message += `<strong>Further Insights:</strong> ${response.openAIResponse.replace(/\n/g, '<br>')}`;
     }
 
-    // Use the showMessage function to display the formatted message
-    const title = "Diagnosis Information";
-    showMessage(title, message);
-    }
+    // Ensure the message box is initially hidden and only shown when needed
+    document.getElementById('messageBox').style.display = 'flex';
+    document.querySelector('#messageBox .message-content p').innerHTML = message; // Ensure this selector matches your HTML structure
+    }   
 
 
     function sendEmail() {
@@ -507,6 +577,9 @@ function getSelectValues(container) {
         url: 'https://localhost:3000/send-email', // Update with your server's endpoint
         method: 'POST',
         contentType: 'application/json',
+        xhrFields: {
+            withCredentials: true // Important: this includes cookies in the request
+        },
         data: JSON.stringify(data),
         success: function(response) {
             alert("Email sent successfully!");
@@ -530,16 +603,15 @@ function getSelectValues(container) {
             </div>
             <nav>
                 <ul>
-                    <li class="current"><a href="#">Home</a></li>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Contact</a></li>
+                    <li class="current"><a href="Home.html">Home</a></li>
+                    <li><a href="UserFeedback.html">Feedback</a></li>
                 </ul>
             </nav>
         </div>
     </header>
 
     <div class="container">
-        <h2>Current Page Title</h2>
+        <h2></h2>
     </div>
 
     <div class="container">
@@ -553,38 +625,43 @@ function getSelectValues(container) {
                 <option value="Dr">Dr</option>
             </select>
 
-            <label for="patientFirstName">First Name:</label>
+            <label for="patientFirstName">First Name: (Optional)</label>
             <input type="text" id="patientFirstName" name="patientFirstName">
 
-            <label for="patientLastName">Last Name:</label>
+            <label for="patientLastName">Last Name: (Optional)</label>
             <input type="text" id="patientLastName" name="patientLastName">
 
-            <label for="streetAddress">Street Address:</label>
+            <label for="doctor">Doctor: (Optional)</label>
+            <select name="doctor" id="doctor">
+                <option value="">Select Doctor</option>
+            </select>
+
+            <label for="streetAddress">Street Address: (Optional)</label>
             <input type="text" id="streetAddress" name="streetAddress">
 
-            <label for="city">City:</label>
+            <label for="city">City: (Optional)</label>
             <input type="text" id="city" name="city">
 
-            <label for="state">State/Province:</label>
+            <label for="state">State/Province: (Optional)</label>
             <input type="text" id="state" name="state">
 
-            <label for="postalCode">Postal Code:</label>
+            <label for="postalCode">Postal Code: (Optional)</label>
             <input type="text" id="postalCode" name="postalCode">
 
-            <label for="country">Country:</label>
+            <label for="country">Country: (Optional)</label>
             <input type="text" id="country" name="country">
 
-            <label for="dateOfBirth">Date of Birth:</label>
+            <label for="dateOfBirth">Date of Birth: (Required)</label>
             <input type="date" id="dateOfBirth" name="dateOfBirth">
 
-            <label for="biologicalSex">Biological Sex:</label>
+            <label for="biologicalSex">Biological Sex: (Required)</label>
             <select id="biologicalSex" name="biologicalSex">
                 <option value="" selected>Please select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
             </select>
 
-            <label>Family History:</label>
+            <label>Family History: (Optional)</label>
             <div class="select-container" id="FamilyHistoryContainer">
                 <div class="select-wrapper" id="FamilyMembersWrapper">
                     <label for="FamilyMembers">Family Member:</label>
@@ -602,14 +679,15 @@ function getSelectValues(container) {
             <button type="button" id="DuplicateContainerButton">Add More</button>
             <div id="DuplicatedContainerContainer"></div>
 
-            <label for="symptoms">Symptoms:</label>
+            <label for="symptoms">Symptoms: (At Least 3 Selections Required)</label>
             <select name="symptoms" id="symptoms" multiple class="symptoms-select" multiple></select>
             
+            <label for="addNewSymptom"> This Button is for the purpose of adding symptoms that aren't listed above. Please check before using this button.</label>
             <button type="button" class="add-symptom-button" id="addNewSymptom">Add New Symptom</button>
 
             <div class="extra-space"></div>
 
-            <input type="submit" class="button" value="Submit">
+            <input type="submit" class="add-symptom-button" value="Submit">
         </form>
     </div>
 
@@ -642,6 +720,9 @@ function getSelectValues(container) {
                     url: 'https://localhost:3000/check-symptom', // Adjust this URL as necessary
                     method: 'POST',
                     contentType: 'application/json',
+                    xhrFields: {
+                        withCredentials: true // Ensures cookies are included in the request
+                    },
                     data: JSON.stringify(data),
                     success: function(response) {
                     console.log('Response:', response);
@@ -667,19 +748,38 @@ function getSelectValues(container) {
                 $('#newSymptomName').val('');
                 $('#addSymptomBox').hide(); // Hide the addSymptomBox
             });
+
+
+            $.ajax({
+                url: 'https://localhost:3000/Doctors',
+                method: 'GET',
+                success: function(response) {
+                    const selectElement = document.getElementById('doctor');
+                    selectElement.innerHTML = '<option value="">Select Doctor</option>'; // Clear existing options
+                    response.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.UserID; 
+                        option.textContent = `Dr. ${doctor.FullName}, ${doctor.MedicalFacility}`;
+                        selectElement.appendChild(option);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching doctors:', error);
+                }
+            });
         });
     </script>
 
     <div class="message-box" id="messageBox" style="display:none;"> <!-- Initially hidden -->
         <div class="message-content">
             <span class="close-btn" onclick="closeMessageBox()">&times;</span>
-            <h2>Message Title</h2>
+            <h2>Diagnostic Results</h2>
             <p>This is your message content. You can customize it as needed.</p>
 
             <!-- Add email input and send button -->
             <div class="email-container">
                 <input type="email" id="emailInput" name="userEmail" placeholder="Enter your email to receive a copy" />
-                <button type="button" id="sendEmail" class="send-email-button">Send</button>
+                <button type="button" id="sendEmail" class="send-email-button" onclick="sendEmail()">Send</button>
             </div>
         </div>
     </div>

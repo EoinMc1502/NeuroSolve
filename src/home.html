@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neuro Solves - Home</title>
+    <title>Neuro Solve - Home</title>
     <style>
-        /* Your existing styles */
         body {
             font-family: Arial, sans-serif;
             background-color: #333;
@@ -27,37 +26,25 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 80px; /* Set height */
+            height: 80px;
         }
-        .profile {
-            display: flex;
-            align-items: center;
+        .button-group {
+            display: flex; /* Ensures that children (buttons) are laid out inline */
+        }
+        .action-button {
             cursor: pointer;
-            position: relative; /* Ensure dropdown is positioned relative to this container */
+            font-size: 16px;
+            color: #fff;
+            background: none;
+            border: none;
+            outline: none;
+            padding: 10px 20px; /* Ensures buttons are close but visibly separate */
+            transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
         }
-        .profile img {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin-right: 10px;
+        .action-button:hover {
+            background-color: #444; /* Change background on hover */
+            color: #ddd; /* Change text color on hover */
         }
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: #555;
-            min-width: 160px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-            z-index: 1;
-            top: 80px; /* Position just below the top bar */
-            left: 50; /* Align with the left edge of the .profile container */
-        }
-        .dropdown-content a {
-            color: white;
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-        }
-        .dropdown-content a:hover {background-color: #777}
         .button {
             background: #555;
             color: #ffffff;
@@ -68,24 +55,25 @@
             border-radius: 5px;
             cursor: pointer;
             transition: transform 0.3s ease, background-color 0.3s ease;
-            display: block; /* For vertical alignment */
-            width: 300px; /* Equal width */
+            display: block;
+            width: 300px;
             text-align: center;
         }
         .button:hover {
             background: #777;
             transform: scale(1.05);
         }
+        #userEmail {
+            color: #fff; /* Set the color of the email to white */
+        }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <div class="profile" onclick="toggleDropdownMenu()">
-            <img src="DefaultUserIcon.png" alt="Profile Icon">
-            <span id="userEmail"></span>
-        </div>
-        <div class="dropdown-content" id="dropdownMenu">
-            <a href="#" onclick="logout()">Logout</a>
+        <span id="userEmail"></span>
+        <div class="button-group">
+            <button class="action-button" onclick="window.location.href='UserFeedback.html'">Feedback</button>
+            <button class="action-button" onclick="logout()">Logout</button>
         </div>
     </div>
 
@@ -95,7 +83,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-            fetchUserDetails(); // Fetch and display user details
+            fetchUserDetails();
 
             $('#newPredictionBtn').click(function() {
                 $.ajax({
@@ -114,7 +102,6 @@
                     }
                 });
             });
-
 
             $('#previousPredictionsBtn').click(function() {
                 $.ajax({
@@ -135,11 +122,6 @@
             });
         });
 
-        function toggleDropdownMenu() {
-            var dropdown = document.getElementById("dropdownMenu");
-            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-        }
-
         function logout() {
             alert("Logged out");
             window.location.href = 'SignUpLogin.html';
@@ -147,32 +129,19 @@
 
         function fetchUserDetails() {
             $.ajax({
-                url: 'https://localhost:3000/user-details', // Adjust URL as needed
+                url: 'https://localhost:3000/user-details',
                 type: 'GET',
                 xhrFields: {
-                    withCredentials: true // Important: this includes cookies in the request
+                    withCredentials: true
                 },
                 success: function(response) {
                     console.log("User details response:", response);
-                    // Assuming response contains 'email'
                     $("#userEmail").text(response.email);
                 },
                 error: function() {
                     console.log("Error fetching user details.");
                 }
             });
-        }
-
-        window.onclick = function(event) {
-            if (!event.target.matches('.profile, .profile *')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.style.display === "block") {
-                        openDropdown.style.display = "none";
-                    }
-                }
-            }
         }
     </script>
 </body>
