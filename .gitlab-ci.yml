@@ -9,13 +9,14 @@ cache:
     - node_modules/
 
 before_script:
-  - echo "Node.js version: $(node --version)"
-  - echo "NPM version: $(npm --version)"
-  - echo "Current working directory: $(pwd)"
-  - npm cache clean --force
-  - rm -rf node_modules package-lock.json
-  - npm install
-  - npm list
+  - |
+    echo "Node.js version: $(node --version)"
+    echo "NPM version: $(npm --version)"
+    echo "Current working directory: $(pwd)"
+    npm cache clean --force
+    rm -rf node_modules package-lock.json
+    npm install
+    npm list
 
 test_job:
   stage: test
