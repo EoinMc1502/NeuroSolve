@@ -105,25 +105,24 @@ function authenticateToken(req, res, next) {
 
 
 
-app.post('/send-email', authenticateToken,  (req, res) => {
+app.post('/send-email', authenticateToken,  async (req, res) => {
     const { email, message } = req.body;
 
     const mailOptions = {
         from: 'neurosolvepredictions@gmail.com',
         to: email,
         subject: 'Information from Neuro Solve',
-        html: message // Sending as HTML to preserve formatting. Ensure this is safe from XSS attacks.
+        html: message
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            console.log(error);
-            res.status(500).send('Error sending email.');
-        } else {
-            console.log('Email sent: ' + info.response);
-            res.send('Email sent successfully.');
-        }
-    });
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully to:', email);
+        res.send('Email sent successfully.');
+    } catch (error) {
+        console.error('Failed to send email:', error);
+        res.status(500).send('Error sending email.');
+    };
 });
 
 
@@ -160,27 +159,31 @@ app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Check if a user with the same email already exists
+        // Log the attempt to find if the email already exists in the database
+        console.log(`Checking for existing user with email: ${email}`);
+        
         const checkQuery = `SELECT * FROM Users WHERE Email = @Email`;
         const checkResult = await pool.request()
             .input('Email', sql.VarChar, email)
             .query(checkQuery);
 
         if (checkResult.recordset.length > 0) {
+            console.log(`Email already in use: ${email}`);
             // User with this email already exists
             return res.status(400).send('Email already in use.');
         }
 
         // Hash the password
+        console.log(`Hashing password for new user: ${email}`);
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Prepare the SQL query to insert the new user
+        // Prepare and execute the SQL query to insert the new user
+        console.log(`Inserting new user into the database: ${email}`);
         const insertQuery = `
             INSERT INTO Users (Email, PasswordHash, CreatedAt, UpdatedAt, IsActive, LastLogin, Role, FullName, MedicalFacility) 
             VALUES (@Email, @PasswordHash, @CreatedAt, @UpdatedAt, @IsActive, @LastLogin, @Role, @FullName, @MedicalFacility)
         `;
-
         await pool.request()
             .input('Email', sql.VarChar, email)
             .input('PasswordHash', sql.VarChar, hashedPassword)
@@ -193,12 +196,14 @@ app.post('/signup', async (req, res) => {
             .input('MedicalFacility', sql.VarChar, '')
             .query(insertQuery);
 
+        console.log(`Signup successful for: ${email}`);
         res.status(200).send('Signup successful');
     } catch (error) {
-        console.error('Signup error:', error);
+        console.error(`Signup error for ${email}:`, error);
         res.status(500).send('Error during signup');
     }
 });
+
 
 
 app.post('/doctor-signup', async (req, res) => {
@@ -682,7 +687,7 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {
         Symptom Analysis Request:
         A user has entered a new symptom: "${newSymptom}". Based on medical knowledge and understanding of symptomatology, determine if this symptom is a synonym or closely related to any of the following existing symptoms: ${existingSymptomsString}. Consider similarities in clinical presentation, patient descriptions, and known medical correlations. 
 
-        Reply with "Yes" if the new symptom is indeed similar or a synonym for any listed symptoms. If "Yes," please specify which symptom or symptoms from the provided list closely match the newly entered symptom. If there are no close matches, reply with "No".
+        Reply with "Yes" if the new symptom is indeed similar or a synonym for any listed symptoms. If "Yes," please specify which symptom or symptoms from the provided list closely match the newly entered symptom and state them. If there are no close matches, reply with "No".
 
         Note: Consider broad medical interpretations and patient-reported experiences when evaluating similarity or synonymy.
         `;
@@ -863,11 +868,24 @@ const httpsOptions = {
 const httpsServer = https.createServer(httpsOptions, app);
 
 
-// const PORT = 3000;
-// app.listen(PORT, () => {
-// console.log(`Server running on port ${PORT}`);
+// Define middleware and routes
+app.use(express.json()); // Example middleware
+
+// Export the app for use in tests
+module.exports = app;
+
+if (require.main === module) {
+    const httpsOptions = {
+        key: fs.readFileSync(path.join(__dirname, 'localhost+2-key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'localhost+2.pem'))
+    };
+    https.createServer(httpsOptions, app).listen(3000, () => {
+        console.log('HTTPS Server running on port 3000');
+    });
+}
+
+
+// httpsServer.listen(3000, () => {
+//     console.log('HTTPS Server running on port 3000');
 // });
-httpsServer.listen(3000, () => {
-    console.log('HTTPS Server running on port 3000');
-});
     

@@ -1,0 +1,15 @@
+image: node:latest
+
+stages:
+  - test
+
+before_script:
+  - npm install
+
+test_job:
+  stage: test
+  script:
+    - npm test
+  only:
+    - main
+    - merge_requests
