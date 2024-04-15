@@ -1,4 +1,3 @@
-// Ensure mocks are declared before requiring any modules that could use them
 jest.mock('jsonwebtoken');
 jest.mock('nodemailer');
 jest.mock('bcrypt');
@@ -25,7 +24,7 @@ jest.mock('mssql', () => {
                                 recordset: [{
                                     UserID: '1',
                                     Email: 'user@example.com',
-                                    PasswordHash: '$2b$10$examplehash', // Assuming bcrypt can validate this hash
+                                    PasswordHash: '$2b$10$examplehash', 
                                     Role: 'user'
                                 }]
                             });
@@ -48,13 +47,13 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const sql = require('mssql');
 
-// Properly mock nodemailer to ensure the sendMail function is correctly mocked
+//mock nodemailer for sending email tests
 const mockSendMail = jest.fn().mockResolvedValue({ response: "Email sent" });
 nodemailer.createTransport.mockReturnValue({ sendMail: mockSendMail });
 
 const app = require('../src/server'); // Ensure this path correctly points to your exported Express app
 
-// Enhancing JWT mock to handle different scenarios
+// JWT mock to handle different scenarios
 jwt.verify.mockImplementation((token, secret, callback) => {
     if (token === "valid-token") {
         callback(null, { id: 'user123' });  // Simulate a successful verification
@@ -63,7 +62,7 @@ jwt.verify.mockImplementation((token, secret, callback) => {
     }
 });
 
-// Mock bcrypt for password comparison
+// Mock bcrypt for password checking
 bcrypt.compare.mockImplementation((inputPassword, storedPassword) => {
     if (inputPassword === "password") {
         return Promise.resolve(true);

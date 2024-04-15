@@ -22,12 +22,12 @@ try:
     DB_PASSWORD = os.getenv("DB_PASSWORD")
     DB_DRIVER = os.getenv("DB_DRIVER")
 
-    # Create the connection string for SQLAlchemy
+    # connection string for SQLAlchemy
     connection_string = f"mssql+pyodbc://{DB_USERNAME}:{DB_PASSWORD}@{DB_SERVER}/{DB_DATABASE}?driver={DB_DRIVER}"
     engine = create_engine(connection_string)
     print("Database connection established.\n")
 
-    # Execute SQL queries to fetch data
+    # run SQL queries to fetch data
     neurological_disorders_query = "SELECT ID, Name, Symptoms, Potential_Symptoms, Age_Distribution_Ranges_Male, Age_Distribution_Ranges_Female, Percentage_Of_Diagnoses_Male, Percentage_Of_Diagnoses_Female FROM Neurological_Disorders"
     neurological_disorders_df = pd.read_sql_query(neurological_disorders_query, engine)
     print("Neurological Disorders DataFrame loaded:")
@@ -43,7 +43,7 @@ try:
     # Remove any duplicate commas and leading/trailing commas
     neurological_disorders_df['Combined_Symptoms'] = neurological_disorders_df['Combined_Symptoms'].str.replace(',,', ',').str.strip(',')
 
-    # Print out some rows to verify concatenation
+
     print("Concatenated Symptoms and Potential Symptoms:")
     print(neurological_disorders_df[['Symptoms', 'Potential_Symptoms', 'Combined_Symptoms']].head(), "\n")
 
@@ -70,7 +70,7 @@ try:
     print("Combined_Symptoms encoded into binary matrix:")
     print(symptom_features_df.head(), "\n")
 
-    # Integrating age distribution ranges into the feature set
+    # adopting age distribution ranges into the feature set
     mlb_age_male = MultiLabelBinarizer()
     age_distribution_male_matrix = mlb_age_male.fit_transform(neurological_disorders_df['Age_Distribution_Ranges_Male'])
     age_distribution_male_df = pd.DataFrame(age_distribution_male_matrix, columns=['Male_Age_' + str(i) for i in mlb_age_male.classes_])
@@ -92,7 +92,7 @@ try:
     # Initialize LeaveOneOut
     loo = LeaveOneOut()
 
-    # Variable to store the aggregated classification report
+    # to store the aggregated classification report
     classification_reports = []
 
     # SMOTE to address class imbalance
@@ -108,26 +108,26 @@ try:
         'min_samples_leaf': [1, 2]
     }
 
-    # Create a RandomForestClassifier object
+    # a RandomForestClassifier object, algorithm that will be used 
     rf = RandomForestClassifier(random_state=42)
 
-    # Create a GridSearchCV object
+    # Create a GridSearchCV object to help with hyperparameter optimisation
     grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=loo, scoring='f1_weighted', verbose=2, n_jobs=-1)
 
     # Fit the GridSearchCV object to the data
     grid_search.fit(X_resampled, y_resampled)
 
-    # Extracting the best estimator
+    # get the best estimator
     best_rf = grid_search.best_estimator_
 
     # Predicting on the entire resampled set for classification report
     y_pred = best_rf.predict(X_resampled)
 
-    # Generating the classification report
+    # makes the classification report
     report = classification_report(y_resampled, y_pred, output_dict=True, zero_division=0)
     classification_reports.append(report)
 
-    # Calculate various performance metrics.
+    # Calculate performance metrics.
     accuracy = accuracy_score(y_resampled, y_pred)
     precision = precision_score(y_resampled, y_pred, average='weighted', zero_division=0)
     recall = recall_score(y_resampled, y_pred, average='weighted', zero_division=0)
@@ -179,34 +179,33 @@ try:
     # Ensure the directory exists, create if it does not
     os.makedirs(base_directory, exist_ok=True)
 
-    # Define the full paths for the files
     mlb_symptoms_filename = os.path.join(base_directory, 'neurological_disorder_mlb_symptoms_1.1.joblib')
     mlb_age_female_filename = os.path.join(base_directory, 'neurological_disorder_mlb_age_female_1.1.joblib')
     mlb_age_male_filename = os.path.join(base_directory, 'neurological_disorder_mlb_age_male_1.1.joblib')
     label_encoder_filename = os.path.join(base_directory, 'neurological_disorder_label_encoder_1.1.joblib')
     model_filename = os.path.join(base_directory, 'neurological_disorder_classifier_1.1.joblib')
 
-    # Save the MultiLabelBinarizer instance
+    # Saves the MultiLabelBinarizer instance
     dump(mlb, mlb_symptoms_filename)
     print("Symptoms MultiLabelBinarizer instance saved.")
 
-    # Save the Age Female MultiLabelBinarizer instance
+    # Saves the Age Female MultiLabelBinarizer instance
     dump(mlb_age_female, mlb_age_female_filename)
     print("Age Female MultiLabelBinarizer instance saved.")
 
-    # Save the Age Male MultiLabelBinarizer instance
+    # Saves the Age Male MultiLabelBinarizer instance
     dump(mlb_age_male, mlb_age_male_filename)
     print("Age Male MultiLabelBinarizer instance saved.")
 
-    # Save the LabelEncoder instance
+    # Saves the LabelEncoder instance
     dump(le, label_encoder_filename)
     print(f"LabelEncoder instance saved as {label_encoder_filename}")
 
-    # Save the RandomForestClassifier model
+    # Saves the RandomForestClassifier model
     dump(best_rf, model_filename)
     print(f"Model saved as {model_filename}")
 
 except Exception as e:
     print("An unexpected error occurred:")
     print(e)
-    traceback.print_exc()  # This will print the stack trace to help identify where the error occurred.
+    traceback.print_exc()  # This will print the stack trace to help identify where the errors occurred.

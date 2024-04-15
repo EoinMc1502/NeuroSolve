@@ -24,12 +24,12 @@
             background: #222;
             padding: 10px 20px;
             display: flex;
-            justify-content: flex-end; /* Aligns the button group to the right */
+            justify-content: flex-end;
             align-items: center;
-            height: 50px; /* Fixed height for the top bar */
+            height: 50px; 
         }
         .home-button {
-            width: 100px; /* Set width to 50px */
+            width: 100px; 
             padding: 10px 20px;
             font-size: 16px;
             color: #fff;
@@ -37,22 +37,22 @@
             border: none;
             cursor: pointer;
             outline: none;
-            transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+            transition: background-color 0.3s, color 0.3s; 
         }
         .home-button:hover {
-            background-color: #444; /* Darken background on hover */
-            color: #ddd; /* Change text color on hover */
+            background-color: #444; 
+            color: #ddd; 
         }
         .container {
             width: 90%;
             max-width: 600px;
-            padding: 40px; /* Increased padding for more vertical space */
+            padding: 40px; 
             background-color: #1e1e1e;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            margin-top: 100px; /* Adjust based on the height of the top bar to avoid overlap */
-            height: auto; /* Adjusts based on content */
-            min-height: 400px; /* Minimum height to ensure larger appearance */
+            margin-top: 100px; 
+            height: auto; 
+            min-height: 400px; 
         }
         h1 {
             text-align: center;
@@ -99,7 +99,7 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
-        function submitFeedback(userID) {
+        function submitFeedback(userID) {//function for validating and sending the feedback
             const feedback = document.getElementById('feedback').value;
             if (!feedback.trim()) {
                 alert('Please enter your feedback before submitting.');
@@ -122,7 +122,7 @@
                 }
             });
         }
-
+        //function get get the users ID from the token in cookies 
         function fetchUserDetails() {
             $.ajax({
                 url: 'https://localhost:3000/user-details',

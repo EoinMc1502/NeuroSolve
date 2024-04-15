@@ -29,7 +29,7 @@
             height: 80px;
         }
         .button-group {
-            display: flex; /* Ensures that children (buttons) are laid out inline */
+            display: flex; 
         }
         .action-button {
             cursor: pointer;
@@ -38,12 +38,12 @@
             background: none;
             border: none;
             outline: none;
-            padding: 10px 20px; /* Ensures buttons are close but visibly separate */
-            transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+            padding: 10px 20px; 
+            transition: background-color 0.3s, color 0.3s; 
         }
         .action-button:hover {
-            background-color: #444; /* Change background on hover */
-            color: #ddd; /* Change text color on hover */
+            background-color: #444; 
+            color: #ddd; 
         }
         .button {
             background: #555;
@@ -64,16 +64,16 @@
             transform: scale(1.05);
         }
         #userEmail {
-            color: #fff; /* Set the color of the email to white */
+            color: #fff;
         }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <span id="userEmail"></span>
+        <span id="userEmail"></span>//displays users email address
         <div class="button-group">
-            <button class="action-button" onclick="window.location.href='UserFeedback.html'">Feedback</button>
-            <button class="action-button" onclick="logout()">Logout</button>
+            <button class="action-button" onclick="window.location.href='UserFeedback.html'">Feedback</button>//navigates to UserFeedback page
+            <button class="action-button" onclick="logout()">Logout</button>//logs the user out
         </div>
     </div>
 
@@ -85,9 +85,9 @@
         $(document).ready(function() {
             fetchUserDetails();
 
-            $('#newPredictionBtn').click(function() {
+            $('#newPredictionBtn').click(function() {// function to navigate to the new prediction page 
                 $.ajax({
-                    url: 'https://localhost:3000/verify-token',
+                    url: 'https://localhost:3000/verify-token', // route to verify token
                     type: 'GET',
                     xhrFields: {
                         withCredentials: true
@@ -103,9 +103,9 @@
                 });
             });
 
-            $('#previousPredictionsBtn').click(function() {
+            $('#previousPredictionsBtn').click(function() {// function to navigate to previous predictions page to view records
                 $.ajax({
-                    url: 'https://localhost:3000/verify-token',
+                    url: 'https://localhost:3000/verify-token',// verify user by token in cookies
                     type: 'GET',
                     xhrFields: {
                         withCredentials: true
@@ -129,7 +129,7 @@
 
         function fetchUserDetails() {
             $.ajax({
-                url: 'https://localhost:3000/user-details',
+                url: 'https://localhost:3000/user-details', // gets users email using cookies
                 type: 'GET',
                 xhrFields: {
                     withCredentials: true

@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, message="X does not have valid feature names, but")
 
-# Define age bins based on the database table data for age ranges
+# Defines age bins based on the database table data for age ranges
 age_bins = [(0, 2), (3, 5), (6, 12), (13, 17), (18, 24), (25, 34), (35, 49), (50, 64), (65, 120)]
 
 def get_age_bin_index(age):
@@ -24,7 +24,7 @@ def get_age_bin_index(age):
     return -1
 
 try:
-    # Load models and transformers
+    # Load models and MLB's and label encoder 
     model = load('machineLearning/neurological_disorder_classifier_1.1.joblib')
     mlb_symptoms = load('machineLearning/neurological_disorder_mlb_symptoms_1.1.joblib')
     mlb_age_male = load('machineLearning/neurological_disorder_mlb_age_male_1.1.joblib')
@@ -34,7 +34,7 @@ except Exception as e:
     logging.error("Failed to load models or transformers: %s", e)
     sys.exit(1)
 
-def prepare_input(symptoms_input, age_input, gender_input):
+def prepare_input(symptoms_input, age_input, gender_input):# preprocessing inputs from user 
     try:
         symptoms_list = list(map(int, symptoms_input.split(',')))
         symptoms_binarized = mlb_symptoms.transform([symptoms_list])
@@ -55,7 +55,7 @@ def prepare_input(symptoms_input, age_input, gender_input):
         logging.error("Error preparing input data: %s", e)
         raise
 
-def explain_with_shap(features, model):
+def explain_with_shap(features, model):#gives insight into feature importance fro the diagnosis the model predicted
     try:
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(features)
@@ -67,7 +67,7 @@ def explain_with_shap(features, model):
         logging.error("Error explaining with SHAP: %s", e)
         raise
 
-def predict_and_explain(symptoms_input, age_input, gender_input):
+def predict_and_explain(symptoms_input, age_input, gender_input):#predicts the disorder for the user based on their input
     try:
         features = prepare_input(symptoms_input, age_input, gender_input)
         prediction = model.predict(features)
@@ -84,7 +84,7 @@ def predict_and_explain(symptoms_input, age_input, gender_input):
         print(json.dumps({"error": str(e)}, indent=2), file=sys.stderr)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 3:
+    if len(sys.argv) > 3:# handles the user inputs
         symptoms_input = sys.argv[1]
         age_input = int(sys.argv[2])
         gender_input = sys.argv[3]

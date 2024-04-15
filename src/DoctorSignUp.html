@@ -94,7 +94,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         document.getElementById('doctorSignupForm').addEventListener('submit', function(event) {
-            event.preventDefault();
+            event.preventDefault();// prevents default submission 
             const formData = {
                 accessCode: document.getElementById('access-code').value,
                 fullName: document.getElementById('name').value,
@@ -103,15 +103,14 @@
                 medicalFacility: document.getElementById('facility').value
             };
             $.ajax({
-                url: 'https://localhost:3000/doctor-signup',
+                url: 'https://localhost:3000/doctor-signup',// attempts to sign doctor up 
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(formData),
                 success: function(response) {
                     console.log('Signup successful:', response);
                     alert('Signup successful!');
-                    window.location.href = 'SignUpLogin.html';
-                    // Redirect to login page or dashboard here
+                    window.location.href = 'SignUpLogin.html';// successful signup naviagte to login page 
                 },
                 error: function(xhr, status, error) {
                     console.error('Signup failed:', xhr.responseText);

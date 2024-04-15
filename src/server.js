@@ -1,7 +1,7 @@
 const express = require('express');
 const sql = require('mssql');
 const bodyParser = require('body-parser');
-const { exec } = require("child_process"); // Step 1: Include exec module
+const { exec } = require("child_process"); 
 require('dotenv').config();
 const { OpenAI } = require('openai');
 const https = require('https');
@@ -20,12 +20,12 @@ const openai = new OpenAI(process.env.OPENAI_API_KEY);
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(cookieParser()); // This line is necessary to parse cookies attached to requests
+app.use(cookieParser()); // necessary to parse cookies attached to requests
 
 
 const corsOptions = {
     origin: function (origin, callback) {
-        console.log("Incoming origin:", origin); // Log the incoming origin
+        console.log("Incoming origin:", origin);
         const allowedOrigins = [
             'http://127.0.0.1:5500',
             'http://localhost:3000',
@@ -36,13 +36,13 @@ const corsOptions = {
 
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             console.log("Origin allowed:", origin);
-            callback(null, true); // Allow CORS for this request
+            callback(null, true); // Allow CORS
         } else {
             console.log("CORS not allowed for:", origin);
-            callback(new Error('CORS Not allowed')); // Reject this request
+            callback(new Error('CORS Not allowed')); // 
         }
     },
-    credentials: true // Important for sending cookies with CORS requests
+    credentials: true // needed for cookies with CORS requests
 };
 
 
@@ -66,9 +66,9 @@ const config = {
     }
 };
 
-// Your email configuration
+// email configuration
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // For example, use Gmail. Configure this with your SMTP provider.
+    service: 'gmail',
     auth: {
         user: process.env.NEURO_EMAIL,
         pass: process.env.NEURO_EMAIL_PASSWORD
@@ -80,13 +80,13 @@ const transporter = nodemailer.createTransport({
 function authenticateToken(req, res, next) {
     console.log("Attempting to authenticate token...");
     
-    // Attempt to retrieve the token from cookies
+    // tries to get the token from cookies
     const token = req.cookies.token;
     if (token == null) {
         console.log("No token provided, sending 401 response");
-        console.log("Cookies:", req.cookies); // See what cookies are available
+        console.log("Cookies:", req.cookies); 
 
-        return res.sendStatus(401); // if no token, return Unauthorized
+        return res.sendStatus(401); // if no token, return Unauthorized to frontend
     }
 
     console.log("Token found, verifying:", token);
@@ -94,11 +94,11 @@ function authenticateToken(req, res, next) {
     jwt.verify(token, process.env.JWT_SECRET_KEY, (err, user) => {
         if (err) {
             console.log("Token verification failed:", err);
-            return res.sendStatus(403); // if token is not valid, return Forbidden
+            return res.sendStatus(403); // if token is not valid, return Forbidden to frontend 
         }
         console.log("Token verified successfully. User details:", user);
-        req.user = user; // Add the user payload to the request
-        next(); // Proceed to the next middleware or route handler
+        req.user = user; // Add the user to request
+        next(); // goes on to the next route handler
     });
 }
 
@@ -133,7 +133,7 @@ const pool = new sql.ConnectionPool({
     database: process.env.DB_DATABASE,
     options: {
         encrypt: true, 
-        trustServerCertificate: true // Depending on your security settings, you might not need this
+        trustServerCertificate: true // used for https local certificate
     },
     pool: {
         max: 10,
@@ -150,7 +150,7 @@ pool.connect(err => {
 
 
 app.get('/verify-token', authenticateToken, (req, res) => {
-    // If this point is reached, token is valid
+    // If this runs, token is valid
     res.json({ verified: true });
 });
 
@@ -159,7 +159,6 @@ app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Log the attempt to find if the email already exists in the database
         console.log(`Checking for existing user with email: ${email}`);
         
         const checkQuery = `SELECT * FROM Users WHERE Email = @Email`;
@@ -169,7 +168,6 @@ app.post('/signup', async (req, res) => {
 
         if (checkResult.recordset.length > 0) {
             console.log(`Email already in use: ${email}`);
-            // User with this email already exists
             return res.status(400).send('Email already in use.');
         }
 
@@ -178,7 +176,7 @@ app.post('/signup', async (req, res) => {
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Prepare and execute the SQL query to insert the new user
+        // Prep for the SQL query to insert the new user
         console.log(`Inserting new user into the database: ${email}`);
         const insertQuery = `
             INSERT INTO Users (Email, PasswordHash, CreatedAt, UpdatedAt, IsActive, LastLogin, Role, FullName, MedicalFacility) 
@@ -230,7 +228,7 @@ app.post('/doctor-signup', async (req, res) => {
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Prepare the SQL query to insert the new doctor user
+        // Preps SQL query to insert the new doctor user
         const insertQuery = `
             INSERT INTO Users (Email, PasswordHash, CreatedAt, UpdatedAt, IsActive, LastLogin, Role, FullName, MedicalFacility) 
             VALUES (@Email, @PasswordHash, @CreatedAt, @UpdatedAt, @IsActive, @LastLogin, @Role, @FullName, @MedicalFacility)
@@ -243,7 +241,7 @@ app.post('/doctor-signup', async (req, res) => {
             .input('UpdatedAt', sql.DateTime, new Date())
             .input('IsActive', sql.Bit, true)
             .input('LastLogin', sql.DateTime, null)
-            .input('Role', sql.VarChar, 'doctor') // Assigning 'doctor' role
+            .input('Role', sql.VarChar, 'doctor') 
             .input('FullName', sql.VarChar, fullName)
             .input('MedicalFacility', sql.VarChar, medicalFacility)
             .query(insertQuery);
@@ -274,12 +272,12 @@ app.post('/login', async (req, res) => {
         // Verify password
         const validPassword = await bcrypt.compare(password, userRecord.PasswordHash);
         if (validPassword) {
-            // Generate a token including the user's role
+            // Generate a token including users details
             const token = jwt.sign(
                 { 
                     userId: userRecord.UserID, 
                     email: userRecord.Email,
-                    role: userRecord.Role // Assuming the role is fetched and available here
+                    role: userRecord.Role 
                 },
                 process.env.JWT_SECRET_KEY,
                 { expiresIn: '24h' } // Token expires in 24 hours
@@ -288,9 +286,7 @@ app.post('/login', async (req, res) => {
             // Set the token in an HTTPOnly cookie
             res.cookie('token', token, {
                 httpOnly: true,
-                //secure: process.env.NODE_ENV === 'production', // Use secure cookies in production environment
                 secure: true,
-                //sameSite: 'Lax', // Allows cookies to be sent with top-level navigations and will be sent along with GET request initiated by third party website.
                 sameSite: 'None',
                 maxAge: 24 * 60 * 60 * 1000 // 24 hours
             }).json({ message: "Login successful" });
@@ -308,8 +304,8 @@ app.post('/login', async (req, res) => {
 
 
 
-app.get('/symptoms', (req, res) => {
-    // Helper function to perform a query
+app.get('/symptoms', (req, res) => {// gets symptoms from Symptoms amd NewSymptoms table
+
     const performQuery = (query) => {
         return new Promise((resolve, reject) => {
             const request = pool.request();
@@ -323,7 +319,6 @@ app.get('/symptoms', (req, res) => {
         });
     };
 
-    // Perform both queries in parallel
     Promise.all([
         performQuery('SELECT * FROM Symptoms'),
         performQuery('SELECT * FROM NewSymptoms')
@@ -332,13 +327,13 @@ app.get('/symptoms', (req, res) => {
         const allSymptoms = results[0].concat(results[1]);
         res.json(allSymptoms);
     }).catch(err => {
-        // Handle any errors that occur during the query
+        // Handles any errors that occur during the query
         console.error('Error fetching symptoms from database:', err);
         res.status(500).send('Error fetching symptoms');
     });
 });
 
-app.get('/FamilyMembers', (req, res) => {
+app.get('/FamilyMembers', (req, res) => {//gets family members from database
     console.log("Fetching FamilyMembers from the database...");
     const request = pool.request();
     request.query('SELECT * FROM FamilyMembers', (err, result) => {
@@ -352,7 +347,7 @@ app.get('/FamilyMembers', (req, res) => {
     });
 });
 
-app.get('/Disorders', (req, res) => {
+app.get('/Disorders', (req, res) => {//gets disorders from database
     console.log("Fetching Disorders from the database...");
     const request = pool.request();
     request.query('SELECT ID, Name FROM Neurological_Disorders', (err, result) => {
@@ -367,7 +362,7 @@ app.get('/Disorders', (req, res) => {
 });
 
 
-app.get('/Doctors', (req, res) => {
+app.get('/Doctors', (req, res) => {// gets doctors from database
     console.log("Fetching Doctors from the database...");
     const request = pool.request();
     request.input('Role', sql.VarChar, 'doctor');
@@ -385,7 +380,7 @@ app.get('/Doctors', (req, res) => {
 
 
 
-// Function to fetch symptom names from the database based on IDs
+// Function to get symptom names from the database based on IDs
 async function getSymptomNamesByIds(ids) {
     try {
         const query = `SELECT ID, Name FROM Symptoms WHERE ID IN (${ids.join(',')})`;
@@ -400,7 +395,7 @@ async function getSymptomNamesByIds(ids) {
     }
 }
 
-function callPythonScript(symptomsString, age, biologicalSex, callback) {
+function callPythonScript(symptomsString, age, biologicalSex, callback) {// function to call the predictor.py file (Diagnoses Patient)
     const pythonExecutable = path.join(__dirname, '..', 'machineLearning', 'bin', 'python3');
     const scriptPath = path.join(__dirname, '..', 'machineLearning', 'predictor.py');
     const command = `${pythonExecutable} ${scriptPath} '${symptomsString}' ${age} '${biologicalSex}'`;
@@ -421,19 +416,18 @@ function callPythonScript(symptomsString, age, biologicalSex, callback) {
 }
 
 
-// Function to categorize symptom IDs into known and new symptoms
+// Function to split symptom IDs into known and new symptoms
 async function categorizeSymptoms(symptomIds) {
     try {
-        // Initialize arrays to hold IDs only
         let knownSymptomIds = [];
         let newSymptomIds = [];
 
-        // Prepare and execute the query to fetch known symptoms
+        // Preps and runs the query to fetch known symptoms
         const queryKnown = `SELECT ID FROM Symptoms WHERE ID IN (${symptomIds.join(',')})`;
         const knownResults = await pool.request().query(queryKnown);
         knownSymptomIds = knownResults.recordset.map(record => record.ID);
 
-        // Prepare and execute the query to fetch new symptoms
+        // Preps and runs the query to fetch new symptoms
         const queryNew = `SELECT ID FROM NewSymptoms WHERE ID IN (${symptomIds.join(',')})`;
         const newResults = await pool.request().query(queryNew);
         newSymptomIds = newResults.recordset.map(record => record.ID);
@@ -450,9 +444,9 @@ async function categorizeSymptoms(symptomIds) {
 }
 
 
-async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {
+async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {// to find which new symptoms need to be added
     try {
-        // Retrieve current new symptoms for the disorder by its name
+        // Gets current new symptoms for the disorder by its name
         const query = `SELECT New_Symptoms FROM Neurological_Disorders WHERE Name = @DisorderName`;
         const result = await pool.request()
             .input('DisorderName', sql.VarChar, disorderName)
@@ -461,7 +455,7 @@ async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {
         let currentNewSymptoms = result.recordset[0]?.NewSymptoms ? result.recordset[0].NewSymptoms.split(',') : [];
         let newSymptomIds = newSymptomsString.split(',').map(Number);
 
-        // Determine which new symptoms need to be added
+        // find which new symptoms need to be added
         let symptomsToAdd = newSymptomIds.filter(id => !currentNewSymptoms.includes(id));
 
         // If there are new symptoms to add, update the database
@@ -486,13 +480,13 @@ async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {
 
 
 
-app.post('/submit-form', authenticateToken, async (req, res) => {
+app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoint for submitting form information, calling predictor file and then OpenAI call to get more data for user like treatments and tests
     console.log('Received form submission:', req.body);
 
     const symptomsArray = req.body.symptoms;
     let symptomsString = symptomsArray instanceof Array ? symptomsArray.join(',') : symptomsArray.toString();
     const { userID, patientTitle, patientFirstName, patientLastName, streetAddress, city, state, postalCode, biologicalSex, country, familyHistory, age, doctor } = req.body;
-
+    //formats date of birth
     let formattedDateOfBirth = req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime()) ? new Date(req.body.dateOfBirth).toISOString().split('T')[0] : null;
 
     try {
@@ -502,7 +496,7 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
                 return res.status(500).send('Error processing prediction');
             }
 
-            //prepares user inputted symptoms for OpenAI prompt
+            //prepares inputted symptoms for OpenAI prompt
             const symptomsArrayNumbers = req.body.symptoms.map(Number);
             console.log('symptom array numbers: ', symptomsArrayNumbers);
             const symptomNames = await getSymptomNamesByIds(symptomsArrayNumbers);
@@ -520,7 +514,7 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
             }));
 
 
-
+            //calls function to split symptoms input to existing and new symptoms
             const { knownSymptoms, newSymptoms } = await categorizeSymptoms(symptomsArray);
 
             console.log('Known Symptom names: ', knownSymptoms);
@@ -531,7 +525,7 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
 
             const diagnosticReasoning = reasoningWithNames.map(item => item.feature).join(', ');
 
-
+            // prompt to be passed to OpenAI
             const openAiPrompt = `The model has diagnosed the patient with ${result.prediction} based on the analysis of various factors. The user reported the following symptoms: ${symptomsString}. Among these, the model identified certain symptoms as key influencing factors for this diagnosis, detailing their specific impacts: ${diagnosticReasoningForPrompt}. Please list any of these key symptoms that directly match the user's reported symptoms and explain their relevance to the diagnosis. If there are no matches, it is important to note that the absence of these key symptoms in the user's report does not invalidate the diagnosis, as the model considers multiple factors. Could you explain why these key factors are critical for this diagnosis? Additionally, could you suggest potential diagnostic tests that could confirm this diagnosis and recommend possible treatments, should the diagnosis be confirmed by a medical professional? Please note that the suggestions provided by this model are preliminary and should be followed up with professional medical advice.`;
 
 
@@ -581,7 +575,7 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
                         request.input('Age', sql.Int, age);
                         request.input('CurrentDate', sql.Date, currentDate);
                         request.input('Diagnosis', sql.VarChar, result.prediction);
-                        request.input('Reasoning', sql.VarChar, diagnosticReasoning);
+                        request.input('Reasoning', sql.VarChar, responseContent.choices[0].message.content.trim());
                         request.input('DoctorID', sql.Int, doctor);
                         request.input('NewSymptoms', sql.VarChar, newSymptoms);
 
@@ -589,11 +583,11 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
                             INSERT INTO PatientData (UserID, Title, First_Name, Last_Name, Street_Address, City, State, Postcode, Country, DOB, Family_History, Symptoms, Biological_Sex, Age, Date, Diagnosis, Diagnosis_Reason, DoctorID, NewSymptoms)
                             VALUES (@UserID, @Title, @First_Name, @Last_Name, @Street_Address, @City, @State, @Postcode, @Country, @DOB, @Family_History, @Symptoms, @BiologicalSex, @Age, @CurrentDate, @Diagnosis, @Reasoning, @DoctorID, @NewSymptoms)
                         `;
-                        await request.query(patientInsertQuery);
+                        await request.query(patientInsertQuery);// saves patient data 
 
                         const addedSymptoms = await updateNewSymptomsForDisorder(result.prediction, newSymptoms);
 
-                        res.json({
+                        res.json({//returns user diagnostic information to frontend
                             patientInsertionResult: "Patient data saved successfully.",
                             predictionResult: result.prediction,
                             diagnosticReasoning: diagnosticReasoning,
@@ -624,9 +618,8 @@ app.post('/submit-form', authenticateToken, async (req, res) => {
 
 
 
-// Endpoint to get user details
-app.get('/user-details', authenticateToken, (req, res) => {
-    // Log to check if the request reaches the endpoint and if req.user is set
+
+app.get('/user-details', authenticateToken, (req, res) => {// gets user details from cookies
     console.log("Accessed /user-details endpoint");
     console.log("req.user:", req.user);
 
@@ -635,15 +628,12 @@ app.get('/user-details', authenticateToken, (req, res) => {
         return res.sendStatus(403); // Forbidden
     }
 
-    // Log to check what user details are being returned
     console.log("Responding with user details for:", req.user.email);
 
-    // Respond with user details
-    // For security reasons, limit the information sent back to the client.
     res.json({
         userID: req.user.userId,
         email: req.user.email,
-        role: req.user.role // Optional, based on your application's needs
+        role: req.user.role
     });
 });
 
@@ -651,7 +641,7 @@ app.get('/user-details', authenticateToken, (req, res) => {
 
 
 
-app.post('/check-symptom', authenticateToken, async (req, res) => {
+app.post('/check-symptom', authenticateToken, async (req, res) => {// to check if new symptoms should be added 
     const newSymptom = req.body.newSymptom;
     console.log('Received request to check new symptom:', newSymptom);
 
@@ -667,7 +657,7 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {
                         resolve(result.recordset.map(record => record.Name));
                     } else {
                         console.log('Unexpected result structure:', result);
-                        resolve([]); // Resolve with an empty array to avoid crashing
+                        resolve([]); 
                     }
                 }
             });
@@ -727,7 +717,7 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {
 
                     const responseText = responseContent.choices && responseContent.choices.length > 0 ? responseContent.choices[0].message.content.trim() : '';
 
-                    if (!responseText.toLowerCase().includes('yes')) {
+                    if (!responseText.toLowerCase().includes('yes')) {// checks AI response for 'yes' and if so runs first condition 
                         await performQuery(`INSERT INTO NewSymptoms (Name) VALUES ('${newSymptom}')`);
                         console.log("New symptom added to the database.");
                         res.json({ added: true, message: "New symptom added to the database." });
@@ -757,8 +747,8 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {
 
 
 
-// Endpoint to fetch patient data
-app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
+
+app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets patient data for viewing patients records page
     try {
         console.log("Fetching patient data...");
         
@@ -766,11 +756,9 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
         let pool = await sql.connect(config);
         console.log("Connected to the database.");
 
-        // Extract UserID from the request, assuming it's sent in the body. Adjust as necessary.
         const { UserID } = req.body;
         console.log("UserID:", UserID);
 
-        // Query to retrieve patient data. Adjust table and column names as necessary.
         const patientDataQuery = `
         SELECT pd.PatientID, pd.DoctorID, pd.First_Name, pd.Last_Name, pd.Symptoms, pd.NewSymptoms, pd.DOB, pd.Biological_Sex, pd.Diagnosis, pd.Diagnosis_Reason, pd.Date
         FROM PatientData pd
@@ -784,7 +772,6 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
             .query(patientDataQuery);
         console.log("Patient data fetched:", patientDataResult);
 
-        // Fetching symptom names
         const symptomsNamesQuery = 'SELECT ID, Name FROM Symptoms';
         const symptomsResult = await pool.request().query(symptomsNamesQuery);
         console.log("Symptoms result:", symptomsResult);
@@ -793,7 +780,6 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
             return acc;
         }, {});
 
-        // Fetching new symptom names
         const newSymptomsNamesQuery = 'SELECT ID, Name FROM NewSymptoms';
         const newSymptomsResult = await pool.request().query(newSymptomsNamesQuery);
         console.log("New symptoms result:", newSymptomsResult);
@@ -816,7 +802,7 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
         
         console.log("Transformed patient data:", patientData);
 
-        // Return the transformed patient data
+        // Return data back 
         res.json(patientData);
     } catch (err) {
         console.error('SQL error', err);
@@ -824,7 +810,7 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/user-feedback', authenticateToken, async (req, res) => {
+app.post('/user-feedback', authenticateToken, async (req, res) => {//allows user to send feedback thats stored in UserFeedback table
     console.log('Received user feedback:', req.body);
 
     const { userID, feedback } = req.body;
@@ -857,8 +843,8 @@ app.post('/user-feedback', authenticateToken, async (req, res) => {
 
 
 
-// HTTPS setup
-const keyPath = path.join(__dirname, 'localhost+2-key.pem'); // Update these paths
+// HTTPS setup (needed locally for cookie usage)
+const keyPath = path.join(__dirname, 'localhost+2-key.pem'); 
 const certPath = path.join(__dirname, 'localhost+2.pem');
 const httpsOptions = {
   key: fs.readFileSync(keyPath),
@@ -868,8 +854,8 @@ const httpsOptions = {
 const httpsServer = https.createServer(httpsOptions, app);
 
 
-// Define middleware and routes
-app.use(express.json()); // Example middleware
+
+app.use(express.json()); 
 
 // Export the app for use in tests
 module.exports = app;

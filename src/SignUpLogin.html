@@ -64,22 +64,21 @@
         .switch-form a:hover {
             text-decoration: underline;
         }
-        /* Enhanced Message Box Styles */
         #messageBox {
             display: none; 
             position: fixed; 
             top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            background-color: #222; /* Darker shade for the theme */
+            background-color: #222; 
             color: #fff;
-            padding: 40px; /* Increased padding for larger box */
-            border-radius: 8px; /* Soft rounded corners */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-            width: 30%; /* Adjustable based on preference */
-            min-width: 300px; /* Ensures box is not too small on narrow screens */
-            z-index: 1000; /* Ensures it's above other elements */
-            box-sizing: border-box; /* Ensures padding doesn't affect overall width */
+            padding: 40px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); 
+            width: 30%; 
+            min-width: 300px; 
+            z-index: 1000; 
+            box-sizing: border-box; 
         }
     </style>
 </head>
@@ -115,7 +114,6 @@
         </div>
     </div>
 
-    <!-- Updated Message Box -->
     <div id="messageBox" style="display: none;">
         <p id="messageContent"></p>
         <button onclick="closeMessageBox()">Close</button>
@@ -132,19 +130,17 @@
                 };
                 
                 $.ajax({
-                    url: 'https://localhost:3000/signup',
+                    url: 'https://localhost:3000/signup',// calls route to signup the user
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(userData),
                     success: function(response) {
-                        // Display success message
                         $('#messageContent').text('Signup successful');
                         $('#messageBox').show();
 
-                        switchForm('login');
+                        switchForm('login');//automatically switches page layout so they can login nce signed up
                     },
                     error: function(xhr) {
-                        // Display error message
                         $('#messageContent').text('Signup failed: ' + xhr.responseText);
                         $('#messageBox').show();
                     }
@@ -159,16 +155,15 @@
                 };
 
                 $.ajax({
-                    url: 'https://localhost:3000/login',
+                    url: 'https://localhost:3000/login',// calls route for login
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(loginData),
                     xhrFields: {
-                        withCredentials: true // Important: This must be true to include cookies in cross-origin requests
+                        withCredentials: true //included for use of cookies
                     },
                     success: function(response) {
-                        // Here, you can redirect to another page or change the UI accordingly
-                        window.location.href = 'home.html'; // Redirect to home page or dashboard
+                        window.location.href = 'home.html'; // Redirect to home page on successful login
                         console.log("login done");
                     },
                     error: function(xhr) {
@@ -184,7 +179,7 @@
             $('#messageBox').hide();
         }
 
-        function switchForm(form) {
+        function switchForm(form) {//used to switch form layout between signup and login
             if (form === 'signup') {
                 $('#login-form').hide();
                 $('#signup-form').show();
