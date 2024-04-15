@@ -12,9 +12,20 @@ cache:
 
 before_script:
   - |
-    # Install Node.js
-    curl -sL https://deb.nodesource.com/setup_14.x | bash -
-    apt-get install -y nodejs
+    # Check the OS and install Node.js
+    if [[ "$(uname)" == "Darwin" ]]; then
+      # Installing Node.js on macOS using Homebrew
+      echo "Installing Node.js using Homebrew..."
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+      export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+      brew install node@16
+      brew link node@16 --force
+    else
+      # Installing Node.js on Linux
+      echo "Installing Node.js using NodeSource for Linux..."
+      curl -sL https://deb.nodesource.com/setup_16.x | bash -
+      apt-get install -y nodejs
+    fi
     echo "Node.js version: $(node --version)"
     echo "NPM version: $(npm --version)"
 
