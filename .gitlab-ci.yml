@@ -1,4 +1,4 @@
-image: node:14
+image: python:3.9
 
 stages:
   - test
@@ -6,22 +6,47 @@ stages:
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
+    - .cache/pip
     - node_modules/
+    - machineLearning/venv/
 
 before_script:
   - |
+    # Install Node.js
+    curl -sL https://deb.nodesource.com/setup_14.x | bash -
+    apt-get install -y nodejs
     echo "Node.js version: $(node --version)"
     echo "NPM version: $(npm --version)"
-    echo "Current working directory: $(pwd)"
+
+    # Install Python environment and packages
+    echo "Python version: $(python --version)"
+    echo "PIP version: $(pip --version)"
+    python -m venv machineLearning/venv
+    source machineLearning/venv/bin/activate
+    pip install --upgrade pip
+    pip install numpy pandas scikit-learn joblib
+    # Add any other dependencies you might need
+    echo "Dependencies installed."
+
+    # Prepare Node.js environment
     npm cache clean --force
     rm -rf node_modules package-lock.json
     npm install
     npm list
 
-test_job:
+test_node:
   stage: test
   script:
     - npm test
+  only:
+    - main
+    - merge_requests
+
+test_python:
+  stage: test
+  script:
+    - source machineLearning/venv/bin/activate
+    - python machineLearning/testModel.py
   only:
     - main
     - merge_requests
