@@ -12,19 +12,18 @@ cache:
 
 before_script:
   - |
-    # Check the OS and install Node.js
     if [[ "$(uname)" == "Darwin" ]]; then
-      # Installing Node.js on macOS using Homebrew
+      # Preparing for Homebrew installation on macOS
       echo "Installing Node.js using Homebrew..."
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-      export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      echo 'export PATH="/usr/local/bin:$PATH"' >> $BASH_ENV
+      source $BASH_ENV
       brew install node@16
       brew link node@16 --force
     else
       # Installing Node.js on Linux
-      echo "Installing Node.js using NodeSource for Linux..."
       curl -sL https://deb.nodesource.com/setup_16.x | bash -
-      sudo apt-get install -y nodejs
+      apt-get install -y nodejs
     fi
     echo "Node.js version: $(node --version)"
     echo "NPM version: $(npm --version)"
@@ -36,7 +35,6 @@ before_script:
     source machineLearning/venv/bin/activate
     pip install --upgrade pip
     pip install numpy pandas scikit-learn joblib
-    # Add any other dependencies you might need
     echo "Dependencies installed."
 
     # Prepare Node.js environment
