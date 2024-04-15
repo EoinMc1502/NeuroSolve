@@ -9,24 +9,24 @@ import time
 def test_login():
     # Setup Chrome options
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Optional: use headless mode
+    chrome_options.add_argument("--headless") 
 
     # Setup WebDriver
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
     try:
-        # Specify the URL to test
-        driver.get("http://localhost:3000/login")  # Adjust the URL based on your setup
+        # URL being tested
+        driver.get("http://localhost:3000/login") 
 
         # Find the email and password input fields
-        email = driver.find_element(By.ID, "email")  # Replace 'email' with the actual ID used in your HTML
-        password = driver.find_element(By.ID, "password")  # Replace 'password' with the actual ID used in your HTML
+        email = driver.find_element(By.ID, "email") 
+        password = driver.find_element(By.ID, "password") 
 
         # Enter the credentials
-        email.send_keys("testuser")
-        password.send_keys("testpassword")
+        email.send_keys("emcnamee08@qub.ac.uk")
+        password.send_keys("1234")
 
-        # Submit the login form (assuming pressing Enter submits the form)
+        # Submit the login form 
         password.send_keys(Keys.RETURN)
 
         # Wait for the response to ensure that navigation has occurred if needed

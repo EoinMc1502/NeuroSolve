@@ -48,7 +48,7 @@ class TestNeurologicalDisorderClassifier(unittest.TestCase):
         predictions = model.predict(all_features)
         decoded_predictions = label_encoder.inverse_transform(predictions)
 
-        # Ensure predictions match expected labels
+        # check predictions match expected labels
         expected_labels = test_df['Name'].values
         self.assertListEqual(list(decoded_predictions), list(expected_labels),
                              msg="Predictions do not match expected labels.")
