@@ -24,7 +24,7 @@ before_script:
       # Installing Node.js on Linux
       echo "Installing Node.js using NodeSource for Linux..."
       curl -sL https://deb.nodesource.com/setup_16.x | bash -
-      apt-get install -y nodejs
+      sudo apt-get install -y nodejs
     fi
     echo "Node.js version: $(node --version)"
     echo "NPM version: $(npm --version)"
