@@ -5,6 +5,7 @@ import os
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -64,43 +65,43 @@ def check_and_update_database(venv_dir):
 
     try:
         session.begin()
-        disorders = session.execute("""
+        disorders = session.execute(text("""
             SELECT Name, New_Symptoms 
             FROM Neurological_Disorders 
             WHERE New_Symptoms IS NOT NULL AND New_Symptoms != ''
-        """).fetchall()
+        """)).fetchall()
 
         for disorder_Name, new_symptoms in disorders:
             symptoms_ids = new_symptoms.split(',')
             for symptom_id in symptoms_ids:
-                patient_data = session.execute("""
+                patient_data = session.execute(text("""
                     SELECT PatientID FROM PatientData
                     WHERE Diagnosis = :disorder_Name AND INSTR(NewSymptoms, :symptom_id) > 0
-                """, {'disorder_Name': disorder_Name, 'symptom_id': symptom_id}).fetchall()
+                """, {'disorder_Name': disorder_Name, 'symptom_id': symptom_id})).fetchall()
 
                 if len(patient_data) >= 3:
-                    result = session.execute("""
+                    result = session.execute(text("""
                         INSERT INTO Symptoms (Name)
                         SELECT Name FROM NewSymptoms WHERE ID = :symptom_id;
                         SELECT SCOPE_IDENTITY() AS NewID;
-                    """, {'symptom_id': symptom_id})
+                    """, {'symptom_id': symptom_id}))
                     new_symptom_id = result.scalar()
-                    session.execute("DELETE FROM NewSymptoms WHERE ID = :symptom_id", {'symptom_id': symptom_id})
-                    session.execute("""
+                    session.execute(text("DELETE FROM NewSymptoms WHERE ID = :symptom_id", {'symptom_id': symptom_id}))
+                    session.execute(text("""
                         UPDATE Neurological_Disorders
                         SET New_Symptoms = REPLACE(New_Symptoms, :symptom_id_str, ''),
                             Potential_Symptoms = CONCAT(Potential_Symptoms, ',', :new_symptom_id)
                         WHERE Name = :disorder_Name
-                    """, {'symptom_id_str': symptom_id + ',', 'new_symptom_id': new_symptom_id, 'disorder_Name': disorder_Name})
+                    """, {'symptom_id_str': symptom_id + ',', 'new_symptom_id': new_symptom_id, 'disorder_Name': disorder_Name}))
                     symptomsUpdatedCount += 1
 
                     for patient in patient_data:
-                        session.execute("""
+                        session.execute(text("""
                             UPDATE PatientData
                             SET NewSymptoms = REPLACE(NewSymptoms, :symptom_id_str, ''),
                                 Symptoms = CONCAT(Symptoms, ',', :new_symptom_id)
                             WHERE PatientID = :patient_id
-                        """, {'symptom_id_str': symptom_id + ',', 'new_symptom_id': new_symptom_id, 'patient_id': patient.PatientID})
+                        """, {'symptom_id_str': symptom_id + ',', 'new_symptom_id': new_symptom_id, 'patient_id': patient.PatientID}))
 
         session.commit()
         print(f"Total updates made: {symptomsUpdatedCount}")

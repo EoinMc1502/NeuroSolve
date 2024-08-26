@@ -25,7 +25,7 @@ app.use(cookieParser()); // necessary to parse cookies attached to requests
 
 const corsOptions = {
     origin: function (origin, callback) {
-        console.log("Incoming origin:", origin);
+        //console.log("Incoming origin:", origin);
         const allowedOrigins = [
             'http://127.0.0.1:5500',
             'http://localhost:3000',
@@ -35,7 +35,7 @@ const corsOptions = {
         ]; // Add more origins as needed
 
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            console.log("Origin allowed:", origin);
+            //console.log("Origin allowed:", origin);
             callback(null, true); // Allow CORS
         } else {
             console.log("CORS not allowed for:", origin);
@@ -78,7 +78,7 @@ const transporter = nodemailer.createTransport({
 
 // Middleware to verify JWT token in HttpOnly Cookie
 function authenticateToken(req, res, next) {
-    console.log("Attempting to authenticate token...");
+    //console.log("Attempting to authenticate token...");
     
     // tries to get the token from cookies
     const token = req.cookies.token;
@@ -117,10 +117,10 @@ app.post('/send-email', authenticateToken,  async (req, res) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully to:', email);
+        //console.log('Email sent successfully to:', email);
         res.send('Email sent successfully.');
     } catch (error) {
-        console.error('Failed to send email:', error);
+        //console.error('Failed to send email:', error);
         res.status(500).send('Error sending email.');
     };
 });
@@ -144,7 +144,7 @@ const pool = new sql.ConnectionPool({
 
 pool.connect(err => {
     if(err) {
-        console.error('Error connecting to the database:', err);
+        //console.error('Error connecting to the database:', err);
     }
 });
 
@@ -159,7 +159,7 @@ app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        console.log(`Checking for existing user with email: ${email}`);
+        //console.log(`Checking for existing user with email: ${email}`);
         
         const checkQuery = `SELECT * FROM Users WHERE Email = @Email`;
         const checkResult = await pool.request()
@@ -167,17 +167,17 @@ app.post('/signup', async (req, res) => {
             .query(checkQuery);
 
         if (checkResult.recordset.length > 0) {
-            console.log(`Email already in use: ${email}`);
+            //console.log(`Email already in use: ${email}`);
             return res.status(400).send('Email already in use.');
         }
 
         // Hash the password
-        console.log(`Hashing password for new user: ${email}`);
+        //console.log(`Hashing password for new user: ${email}`);
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Prep for the SQL query to insert the new user
-        console.log(`Inserting new user into the database: ${email}`);
+        //console.log(`Inserting new user into the database: ${email}`);
         const insertQuery = `
             INSERT INTO Users (Email, PasswordHash, CreatedAt, UpdatedAt, IsActive, LastLogin, Role, FullName, MedicalFacility) 
             VALUES (@Email, @PasswordHash, @CreatedAt, @UpdatedAt, @IsActive, @LastLogin, @Role, @FullName, @MedicalFacility)
@@ -259,7 +259,7 @@ app.post('/doctor-signup', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    console.log("Current NODE_ENV:", process.env.NODE_ENV);
+    //console.log("Current NODE_ENV:", process.env.NODE_ENV);
 
     // Find user by email
     const userQuery = `SELECT * FROM Users WHERE Email = @Email`;
@@ -334,7 +334,7 @@ app.get('/symptoms', (req, res) => {// gets symptoms from Symptoms amd NewSympto
 });
 
 app.get('/FamilyMembers', (req, res) => {//gets family members from database
-    console.log("Fetching FamilyMembers from the database...");
+    //console.log("Fetching FamilyMembers from the database...");
     const request = pool.request();
     request.query('SELECT * FROM FamilyMembers', (err, result) => {
         if (err) {
@@ -342,13 +342,13 @@ app.get('/FamilyMembers', (req, res) => {//gets family members from database
             res.status(500).send('Error fetching FamilyMembers');
             return;
         }
-        console.log('FamilyMembers fetched successfully:', result.recordset);
+        //console.log('FamilyMembers fetched successfully:', result.recordset);
         res.json(result.recordset);
     });
 });
 
 app.get('/Disorders', (req, res) => {//gets disorders from database
-    console.log("Fetching Disorders from the database...");
+    //console.log("Fetching Disorders from the database...");
     const request = pool.request();
     request.query('SELECT ID, Name FROM Neurological_Disorders', (err, result) => {
         if (err) {
@@ -356,14 +356,14 @@ app.get('/Disorders', (req, res) => {//gets disorders from database
             res.status(500).send('Error fetching Disorders');
             return;
         }
-        console.log('Disorders fetched successfully:', result.recordset);
+        //console.log('Disorders fetched successfully:', result.recordset);
         res.json(result.recordset);
     });
 });
 
 
 app.get('/Doctors', (req, res) => {// gets doctors from database
-    console.log("Fetching Doctors from the database...");
+    //console.log("Fetching Doctors from the database...");
     const request = pool.request();
     request.input('Role', sql.VarChar, 'doctor');
     request.query('SELECT UserID, FullName, MedicalFacility FROM Users WHERE role = @Role', (err, result) => {
@@ -372,7 +372,7 @@ app.get('/Doctors', (req, res) => {// gets doctors from database
             res.status(500).send('Error fetching Doctors');
             return;
         }
-        console.log('Doctors fetched successfully:', result.recordset);
+        //console.log('Doctors fetched successfully:', result.recordset);
         res.json(result.recordset);
     });
 });
@@ -481,7 +481,7 @@ async function updateNewSymptomsForDisorder(disorderName, newSymptomsString) {//
 
 
 app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoint for submitting form information, calling predictor file and then OpenAI call to get more data for user like treatments and tests
-    console.log('Received form submission:', req.body);
+    //console.log('Received form submission:', req.body);
 
     const symptomsArray = req.body.symptoms;
     let symptomsString = symptomsArray instanceof Array ? symptomsArray.join(',') : symptomsArray.toString();
@@ -489,7 +489,14 @@ app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoin
     //formats date of birth
     let formattedDateOfBirth = req.body.dateOfBirth && !isNaN(new Date(req.body.dateOfBirth).getTime()) ? new Date(req.body.dateOfBirth).toISOString().split('T')[0] : null;
 
+    //calls function to split symptoms input to existing and new symptoms
+    const { knownSymptoms, newSymptoms } = await categorizeSymptoms(symptomsArray);
+
+    //console.log('Known Symptom names: ', knownSymptoms);
+    //console.log('New Symptom names: ', newSymptoms);
+
     try {
+        //console.log('Input into the python predictor: ', knownSymptoms, '    ',  age, '    ', biologicalSex);
         callPythonScript(symptomsString, age, biologicalSex, async (error, result) => {
             if (error) {
                 console.error('Error in prediction:', error);
@@ -498,12 +505,12 @@ app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoin
 
             //prepares inputted symptoms for OpenAI prompt
             const symptomsArrayNumbers = req.body.symptoms.map(Number);
-            console.log('symptom array numbers: ', symptomsArrayNumbers);
+            //console.log('symptom array numbers: ', symptomsArrayNumbers);
             const symptomNames = await getSymptomNamesByIds(symptomsArrayNumbers);
-            console.log('symptom names: ', symptomNames);
+            //console.log('symptom names: ', symptomNames);
             const symptomsString = Object.values(symptomNames).join(', ');
 
-            console.log('symptom names string: ', symptomsString);
+            //console.log('symptom names string: ', symptomsString);
 
 
             let symptomIds = result.reasoning.map(item => parseInt(item.feature));
@@ -512,13 +519,6 @@ app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoin
                 feature: symptomNamesMap[item.feature] || 'Unknown Symptom',
                 effect: item.effect
             }));
-
-
-            //calls function to split symptoms input to existing and new symptoms
-            const { knownSymptoms, newSymptoms } = await categorizeSymptoms(symptomsArray);
-
-            console.log('Known Symptom names: ', knownSymptoms);
-            console.log('New Symptom names: ', newSymptoms);
 
 
             const diagnosticReasoningForPrompt = reasoningWithNames.map(item => `${item.feature}: Impact of ${item.effect}`).join(', ');
@@ -555,7 +555,7 @@ app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoin
                 apiRes.on('end', async () => {
                     try {
                         const responseContent = JSON.parse(responseBody);
-                        console.log("OpenAI API Response:", responseContent);
+                        //console.log("OpenAI API Response:", responseContent);
 
                         const currentDate = new Date();
                         const request = new sql.Request(pool);
@@ -620,15 +620,15 @@ app.post('/submit-form', authenticateToken, async (req, res) => {// main endpoin
 
 
 app.get('/user-details', authenticateToken, (req, res) => {// gets user details from cookies
-    console.log("Accessed /user-details endpoint");
-    console.log("req.user:", req.user);
+    //console.log("Accessed /user-details endpoint");
+    //console.log("req.user:", req.user);
 
     if (!req.user) {
         console.log("No user found in request, sending 403 response");
         return res.sendStatus(403); // Forbidden
     }
 
-    console.log("Responding with user details for:", req.user.email);
+    //console.log("Responding with user details for:", req.user.email);
 
     res.json({
         userID: req.user.userId,
@@ -643,7 +643,7 @@ app.get('/user-details', authenticateToken, (req, res) => {// gets user details 
 
 app.post('/check-symptom', authenticateToken, async (req, res) => {// to check if new symptoms should be added 
     const newSymptom = req.body.newSymptom;
-    console.log('Received request to check new symptom:', newSymptom);
+    //console.log('Received request to check new symptom:', newSymptom);
 
     const performQuery = async (query) => {
         return new Promise((resolve, reject) => {
@@ -682,7 +682,7 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {// to check i
         Note: Consider broad medical interpretations and patient-reported experiences when evaluating similarity or synonymy.
         `;
 
-        console.log("Sending the following prompt to OpenAI:", prompt);
+        //console.log("Sending the following prompt to OpenAI:", prompt);
 
         const data = JSON.stringify({
             model: "gpt-3.5-turbo",
@@ -710,19 +710,19 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {// to check i
             apiRes.on('data', (chunk) => responseBody += chunk);
 
             apiRes.on('end', async () => {
-                console.log("OpenAI API responded with:", responseBody);
+                //console.log("OpenAI API responded with:", responseBody);
                 try {
                     const responseContent = JSON.parse(responseBody);
-                    console.log("Parsed OpenAI API response:", responseContent);
+                    //console.log("Parsed OpenAI API response:", responseContent);
 
                     const responseText = responseContent.choices && responseContent.choices.length > 0 ? responseContent.choices[0].message.content.trim() : '';
 
                     if (!responseText.toLowerCase().includes('yes')) {// checks AI response for 'yes' and if so runs first condition 
                         await performQuery(`INSERT INTO NewSymptoms (Name) VALUES ('${newSymptom}')`);
-                        console.log("New symptom added to the database.");
+                        //console.log("New symptom added to the database.");
                         res.json({ added: true, message: "New symptom added to the database." });
                     } else {
-                        console.log("Symptom is similar to an existing symptom.", responseText);
+                        //console.log("Symptom is similar to an existing symptom.", responseText);
                         res.json({ added: false, message: "Symptom is similar to an existing symptom.", similarTo: responseText });
                     }
                 } catch (parseError) {
@@ -750,14 +750,14 @@ app.post('/check-symptom', authenticateToken, async (req, res) => {// to check i
 
 app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets patient data for viewing patients records page
     try {
-        console.log("Fetching patient data...");
+        //console.log("Fetching patient data...");
         
         // Connect to your database
         let pool = await sql.connect(config);
-        console.log("Connected to the database.");
+        //console.log("Connected to the database.");
 
         const { UserID } = req.body;
-        console.log("UserID:", UserID);
+        //console.log("UserID:", UserID);
 
         const patientDataQuery = `
         SELECT pd.PatientID, pd.DoctorID, pd.First_Name, pd.Last_Name, pd.Symptoms, pd.NewSymptoms, pd.DOB, pd.Biological_Sex, pd.Diagnosis, pd.Diagnosis_Reason, pd.Date
@@ -770,11 +770,11 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets p
         const patientDataResult = await pool.request()
             .input('UserID', sql.Int, UserID)
             .query(patientDataQuery);
-        console.log("Patient data fetched:", patientDataResult);
+        //console.log("Patient data fetched:", patientDataResult);
 
         const symptomsNamesQuery = 'SELECT ID, Name FROM Symptoms';
         const symptomsResult = await pool.request().query(symptomsNamesQuery);
-        console.log("Symptoms result:", symptomsResult);
+        //console.log("Symptoms result:", symptomsResult);
         const symptomsMap = symptomsResult.recordset.reduce((acc, current) => {
             acc[current.ID] = current.Name;
             return acc;
@@ -782,7 +782,7 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets p
 
         const newSymptomsNamesQuery = 'SELECT ID, Name FROM NewSymptoms';
         const newSymptomsResult = await pool.request().query(newSymptomsNamesQuery);
-        console.log("New symptoms result:", newSymptomsResult);
+        //console.log("New symptoms result:", newSymptomsResult);
         const newSymptomsMap = newSymptomsResult.recordset.reduce((acc, current) => {
             acc[current.ID] = current.Name;
             return acc;
@@ -800,7 +800,7 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets p
             };
         });
         
-        console.log("Transformed patient data:", patientData);
+        //console.log("Transformed patient data:", patientData);
 
         // Return data back 
         res.json(patientData);
@@ -811,7 +811,7 @@ app.post('/fetch-patient-data', authenticateToken, async (req, res) => {//gets p
 });
 
 app.post('/user-feedback', authenticateToken, async (req, res) => {//allows user to send feedback thats stored in UserFeedback table
-    console.log('Received user feedback:', req.body);
+    //console.log('Received user feedback:', req.body);
 
     const { userID, feedback } = req.body;
     
